@@ -1,250 +1,173 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+
+import { useState } from "react";
 import {
   Box,
   VStack,
   HStack,
   Input,
   IconButton,
-  Text,
   Container,
-  Flex,
-  Avatar,
   Spinner,
+  Text,
   Button,
-  useColorModeValue
 } from "@chakra-ui/react";
-import { Link } from "@chakra-ui/react";
-import { Send, Bot, User, Circle } from "lucide-react";
+import { Send } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 type Service = {
-  name: string;
-  link: string;
-  price?: string;
+  title: string;
+  link?: string;
 };
 
 type Message = {
   role: "user" | "assistant";
   content: string;
-  services?: Service[];
+  service?: Service | null;
 };
 
 export default function ChatInterface() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! I'm your **Jaagruk Bharat Assistant**. Ask me about PAN, Passport, or other services."
-    }
+      content:
+        "Hi! 👋 We can help you with PAN, Aadhaar, certificates and more.\n\nWhat do you need help with?",
+      service: null,
+    },
   ]);
 
   const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(false);
+  const [currentService, setCurrentService] = useState<Service | null>(null);
 
-  const uBubble = useColorModeValue("blue.600", "blue.500");
-  const aBubble = useColorModeValue("gray.50", "gray.700");
-  const aiTextColor = useColorModeValue("black", "white");
+  // ✅ SEND MESSAGE
+  const handleSend = async (text?: string) => {
+    const msg = text || input;
+    if (!msg.trim() || loading) return;
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, isLoading]);
+    const userMsg: Message = { role: "user", content: msg };
 
-  const handleSend = async (msg?: string) => {
-    const text = msg || input;
-    if (!text.trim() || isLoading) return;
-
-    const userMsg: Message = { role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
-
     setInput("");
-    setIsLoading(true);
+    setLoading(true);
 
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
-          message: text,
-          history: messages.map((m) => ({
-            role: m.role === "assistant" ? "model" : "user",
-            content: m.content
-          }))
-        })
+          message: msg,
+          currentService,
+        }),
       });
 
       const data = await res.json();
 
-      const botMessage: Message = {
+      const botMsg: Message = {
         role: "assistant",
-        content: data.text || data.reply || "",
-        services: data.services || []
+        content: data.reply,
+        service: data.service || currentService,
       };
 
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
+      setCurrentService(data.service || currentService);
+      setMessages((prev) => [...prev, botMsg]);
+    } catch {
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "⚠️ Connection error. Please try again." }
+        {
+          role: "assistant",
+          content: "⚠️ Something went wrong. Please try again.",
+        },
       ]);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
+  // ✅ QUICK SERVICE CLICK
+  const handleServiceSelect = (service: Service) => {
+    setCurrentService(service);
+    handleSend(service.title);
+  };
+
   return (
-    <Container maxW={["full", "container.md"]} h={["100vh", "85vh"]} p={0} shadow="2xl" mt={[0, "5vh"]}>
-      <VStack h="full" spacing={0} bg="white" borderRadius={[0, "2xl"]} overflow="hidden" border="1px" borderColor="gray.100">
-        
-        {/* Header */}
-        <HStack w="full" p={4} bg="blue.600" color="white" justify="space-between" shadow="md">
-          <HStack spacing={3}>
-            <Avatar size="sm" icon={<Bot size={20} />} bg="white" color="blue.600" />
-            <Box>
-              <Text fontWeight="bold" fontSize={["sm", "md"]}>Jaagruk Bharat AI</Text>
-              <HStack spacing={1}>
-                <Circle size={8} fill="green.400" color="green.400" />
-                <Text fontSize="xs">Active Now</Text>
-              </HStack>
-            </Box>
-          </HStack>
-        </HStack>
-
-        {/* Chat Messages */}
-        <Box flex={1} w="full" overflowY="auto" p={4} ref={scrollRef} bg="gray.50">
-          <VStack spacing={5} align="stretch">
-            {messages.map((m, i) => (
-              <Flex key={i} justify={m.role === "user" ? "flex-end" : "flex-start"}>
-                <HStack align="start" spacing={3} maxW="85%" flexDir={m.role === "user" ? "row-reverse" : "row"}>
-                  <Avatar size="xs" icon={m.role === "user" ? <User size={14} /> : <Bot size={14} />} />
-                  
-                  <Box
-                    p={3}
-                    bg={m.role === "user" ? uBubble : aBubble}
-                    color={m.role === "user" ? "white" : aiTextColor}
-                    borderRadius="2xl"
-                    shadow="sm"
-                    borderTopRightRadius={m.role === "user" ? 0 : "2xl"}
-                    borderTopLeftRadius={m.role === "assistant" ? 0 : "2xl"}
-                  >
-                    {/* Message Text */}
-                    <Box sx={{ "& p": { mb: 0 } }} pointerEvents="auto">
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm]}
-                        components={{
-                          a: ({ node, ...props }) => (
-                            <a
-                              {...props}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: "#3182ce", textDecoration: "underline" }}
-                            />
-                          )
+    <Container maxW="container.md" h="100vh" p={4}>
+      <VStack h="full" spacing={4}>
+        {/* CHAT */}
+        <Box flex={1} w="full" overflowY="auto">
+          <VStack spacing={3} align="stretch">
+            {messages.map((msg, i) => (
+              <Box
+                key={i}
+                alignSelf={msg.role === "user" ? "flex-end" : "flex-start"}
+                bg={msg.role === "user" ? "blue.500" : "gray.200"}
+                color={msg.role === "user" ? "white" : "black"}
+                px={4}
+                py={2}
+                borderRadius="lg"
+                maxW="80%"
+              >
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a: (props) => (
+                      <a
+                        {...props}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#3182ce",
+                          fontWeight: "bold",
                         }}
-                      >
-                        {m.content}
-                      </ReactMarkdown>
-                    </Box>
-
-                    {/* 🔥 Services Section */}
-                    {m.services && m.services.length > 0 && (
-                      <VStack align="start" mt={3} spacing={2}>
-                        <Text fontWeight="bold" fontSize="sm">
-                          Available Services:
-                        </Text>
-
-                        {m.services.map((s, i) => (
-                          <Box
-                            key={i}
-                            p={2}
-                            bg="white"
-                            borderWidth="1px"
-                            borderRadius="md"
-                            w="100%"
-                            pointerEvents="auto"
-                          >
-                            <Text fontWeight="semibold" fontSize="sm">
-                              {i + 1}. {s.name}
-                            </Text>
-
-                            {s.price && (
-                              <Text fontSize="xs">💰 {s.price}</Text>
-                            )}
-
-                            <Link
-                              href={s.link?.trim()}
-                              isExternal
-                              color="blue.600"
-                              fontSize="sm"
-                              fontWeight="medium"
-                              _hover={{ textDecoration: "underline" }}
-                              display="inline-block"
-                              cursor="pointer">
-                              Open Service →
-                            </Link>
-                          </Box>
-                        ))}
-                      </VStack>
-                    )}
-                  </Box>
-                </HStack>
-              </Flex>
+                      />
+                    ),
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              </Box>
             ))}
 
-            {isLoading && (
-              <HStack spacing={2} p={2} color="gray.400">
-                <Spinner size="xs" />
-                <Text fontSize="xs" fontStyle="italic">
-                  Searching database...
-                </Text>
+            {loading && (
+              <HStack>
+                <Spinner size="sm" />
+                <Text fontSize="sm">Thinking...</Text>
               </HStack>
             )}
           </VStack>
         </Box>
 
-        {/* Footer */}
-        <Box w="full" p={4} bg="white" borderTop="1px" borderColor="gray.100">
-          <HStack spacing={2} mb={3} overflowX="auto" pb={1}>
-            {["PAN Help", "Passport Fee", "Support"].map((c) => (
-              <Button
-                key={c}
-                size="xs"
-                variant="outline"
-                borderRadius="full"
-                colorScheme="blue"
-                onClick={() => handleSend(c)}
-                disabled={isLoading}
-              >
-                {c}
-              </Button>
-            ))}
-          </HStack>
+        {/* QUICK BUTTONS */}
+        <HStack w="full" overflowX="auto">
+          {["PAN Card", "Aadhaar Update", "Income Certificate"].map((s) => (
+            <Button
+              key={s}
+              size="sm"
+              onClick={() => handleServiceSelect({ title: s })}
+            >
+              {s}
+            </Button>
+          ))}
+        </HStack>
 
-          <HStack spacing={3}>
-            <Input
-              variant="filled"
-              placeholder="Ask about services..."
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              borderRadius="full"
-              bg="gray.100"
-              _focus={{ bg: "white", borderColor: "blue.500" }}
-            />
-
-            <IconButton
-              aria-label="send"
-              icon={<Send size={20} />}
-              colorScheme="blue"
-              borderRadius="full"
-              onClick={() => handleSend()}
-              isLoading={isLoading}
-            />
-          </HStack>
-        </Box>
+        {/* INPUT */}
+        <HStack w="full">
+          <Input
+            placeholder="Ask about services..."
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+          />
+          <IconButton
+            aria-label="send"
+            icon={<Send />}
+            onClick={() => handleSend()}
+            isLoading={loading}
+          />
+        </HStack>
       </VStack>
     </Container>
   );

@@ -3,8 +3,9 @@
 import dynamic from "next/dynamic";
 import { Box, Spinner, Center } from "@chakra-ui/react";
 
+// ✅ Correct path (adjust if needed)
 const ChatInterface = dynamic(
-  () => import("../../components/ChatInterface"),
+  () => import("../components/ChatInterface"),
   {
     ssr: false,
     loading: () => (
