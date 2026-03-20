@@ -58,23 +58,27 @@ async function getServices() {
   }
 }
 
-// ✅ FOLLOW-UP DETECTOR
-function isFollowUp(text: string) {
-  return (
-    text.includes("document") ||
-    text.includes("documents") ||
-    text.includes("proof") ||
-    text.includes("steps") ||
-    text.includes("process") ||
-    text.includes("how") ||
-    text.includes("time") ||
-    text.includes("days") ||
-    text.includes("link") ||
-    text.includes("apply")
+// ✅ INTENT DETECTOR (FIXED ORDER)
+function detectIntent(text: string) {
+  if (text.includes("time") || text.includes("days")) return "TIME";
+  if (text.includes("document") || text.includes("proof")) return "DOCUMENTS";
+  if (text.includes("link") || text.includes("apply")) return "LINK";
+  if (text.includes("step") || text.includes("process") || text.includes("how"))
+    return "PROCESS";
+  return "GENERAL";
+}
+
+// ✅ RELEVANCE CHECK (NEW)
+function isRelevant(message: string, service: any) {
+  const msg = message.toLowerCase();
+  const title = service.title.toLowerCase();
+
+  return msg.split(" ").some(
+    (word) => word.length > 2 && title.includes(word)
   );
 }
 
-// 🤖 AI SERVICE PICKER (FIXED WITH FUZZY MATCH)
+// 🤖 AI SERVICE PICKER
 async function pickServiceWithAI(message: string, services: any[]) {
   const serviceList = services.map((s) => s.title).join("\n");
 
@@ -99,7 +103,6 @@ Rules:
   const picked =
     completion.choices[0]?.message?.content?.toLowerCase().trim();
 
-  // 🔥 FUZZY MATCH
   let bestService = null;
   let bestScore = 0;
 
@@ -139,7 +142,6 @@ You are a helpful support assistant.
 STRICT RULES:
 - ONLY talk about THIS service
 - NEVER switch service
-- Answer directly
 - Keep response SHORT (max 4–5 lines)
 
 Service: ${service.title}
@@ -203,83 +205,44 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const followUp = isFollowUp(text);
+    // 🔥 STEP 1: AI picks service
+    const aiService = await pickServiceWithAI(message, services);
 
-    let selectedService = currentService;
+    let selectedService = null;
 
-    // 🔥 AI SERVICE SELECTION
-    if (!followUp) {
-      const aiService = await pickServiceWithAI(message, services);
-
-      if (aiService) {
-        selectedService = aiService;
-      }
+    // 🔥 STEP 2: Validate AI result
+    if (aiService && isRelevant(message, aiService)) {
+      selectedService = aiService;
+    } 
+    // 🔥 STEP 3: fallback to previous (follow-up)
+    else if (currentService) {
+      selectedService = currentService;
+    } 
+    // 🔥 STEP 4: fallback to AI anyway
+    else {
+      selectedService = aiService;
     }
 
-    // ❌ NO SERVICE
+    // ❌ STILL NOTHING
     if (!selectedService) {
       return NextResponse.json({
         reply:
-          "We currently don't provide this exact service.\n\nTell me what you need 👍",
+          "I couldn't find an exact match, but I can help. Try PAN, Aadhaar, or certificates 👍",
       });
     }
 
-    // 🔗 LINK
-    if (text.includes("link") || text.includes("apply")) {
-      const reply = await formatResponse({
-        message,
-        service: selectedService,
-        intent: "LINK",
-      });
-      return NextResponse.json({ reply, service: selectedService });
-    }
+    const intent = detectIntent(text);
 
-    // 🧾 PROCESS
-    if (
-      text.includes("how") ||
-      text.includes("steps") ||
-      text.includes("process")
-    ) {
-      const reply = await formatResponse({
-        message,
-        service: selectedService,
-        intent: "PROCESS",
-      });
-      return NextResponse.json({ reply, service: selectedService });
-    }
-
-    // 📄 DOCUMENTS
-    if (
-      text.includes("document") ||
-      text.includes("documents") ||
-      text.includes("proof")
-    ) {
-      const reply = await formatResponse({
-        message,
-        service: selectedService,
-        intent: "DOCUMENTS",
-      });
-      return NextResponse.json({ reply, service: selectedService });
-    }
-
-    // ⏱ TIME
-    if (text.includes("time") || text.includes("days")) {
-      const reply = await formatResponse({
-        message,
-        service: selectedService,
-        intent: "TIME",
-      });
-      return NextResponse.json({ reply, service: selectedService });
-    }
-
-    // 📘 DEFAULT
     const reply = await formatResponse({
       message,
       service: selectedService,
-      intent: "GENERAL",
+      intent,
     });
 
-    return NextResponse.json({ reply, service: selectedService });
+    return NextResponse.json({
+      reply,
+      service: selectedService,
+    });
   } catch (err) {
     console.error(err);
     return NextResponse.json({
