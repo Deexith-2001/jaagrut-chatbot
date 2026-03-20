@@ -58,39 +58,6 @@ async function getServices() {
   }
 }
 
-// ✅ MATCHING
-function matchService(message: string, services: any[]) {
-  const input = message.toLowerCase();
-
-  let bestService = null;
-  let bestScore = 0;
-
-  for (const s of services) {
-    const text = (
-      s.title +
-      " " +
-      (s.description || "") +
-      " " +
-      (s.process || "")
-    ).toLowerCase();
-
-    let score = 0;
-
-    input.split(" ").forEach((word) => {
-      if (word.length > 2 && text.includes(word)) {
-        score++;
-      }
-    });
-
-    if (score > bestScore) {
-      bestScore = score;
-      bestService = s;
-    }
-  }
-
-  return { service: bestService, score: bestScore };
-}
-
 // ✅ FOLLOW-UP DETECTOR
 function isFollowUp(text: string) {
   return (
@@ -107,7 +74,56 @@ function isFollowUp(text: string) {
   );
 }
 
-// 🤖 AI FORMATTER (FINAL FIXED)
+// 🤖 AI SERVICE PICKER (FIXED WITH FUZZY MATCH)
+async function pickServiceWithAI(message: string, services: any[]) {
+  const serviceList = services.map((s) => s.title).join("\n");
+
+  const prompt = `
+User message: "${message}"
+
+Available services:
+${serviceList}
+
+Select the most relevant service.
+
+Rules:
+- Return ONLY the service name
+- No explanation
+`;
+
+  const completion = await groq.chat.completions.create({
+    model: "llama-3.1-8b-instant",
+    messages: [{ role: "user", content: prompt }],
+  });
+
+  const picked =
+    completion.choices[0]?.message?.content?.toLowerCase().trim();
+
+  // 🔥 FUZZY MATCH
+  let bestService = null;
+  let bestScore = 0;
+
+  for (const s of services) {
+    const title = s.title.toLowerCase();
+
+    let score = 0;
+
+    picked?.split(" ").forEach((word) => {
+      if (word.length > 2 && title.includes(word)) {
+        score++;
+      }
+    });
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestService = s;
+    }
+  }
+
+  return bestService;
+}
+
+// 🤖 AI FORMATTER
 async function formatResponse({
   message,
   service,
@@ -123,7 +139,7 @@ You are a helpful support assistant.
 STRICT RULES:
 - ONLY talk about THIS service
 - NEVER switch service
-- Answer the user directly (DO NOT ask questions)
+- Answer directly
 - Keep response SHORT (max 4–5 lines)
 
 Service: ${service.title}
@@ -139,10 +155,10 @@ Steps: ${service.process}
 INSTRUCTIONS:
 
 If intent = PROCESS:
-- Show steps as bullet points
+- Show steps in bullet points
 
 If intent = DOCUMENTS:
-- Show required documents clearly
+- Show required documents
 
 If intent = TIME:
 - Give short time estimate
@@ -151,7 +167,7 @@ If intent = LINK:
 - Only give link
 
 If GENERAL:
-- Give short helpful explanation
+- Give short explanation
 
 ALWAYS end with:
 👉 [Apply here](${service.link})
@@ -187,26 +203,24 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 🔍 MATCH SERVICE
-    const { service: detectedService, score } = matchService(
-      message,
-      services
-    );
-
     const followUp = isFollowUp(text);
 
     let selectedService = currentService;
 
-    // ✅ SWITCH ONLY IF NEW TOPIC
-    if (!followUp && detectedService && score >= 2) {
-      selectedService = detectedService;
+    // 🔥 AI SERVICE SELECTION
+    if (!followUp) {
+      const aiService = await pickServiceWithAI(message, services);
+
+      if (aiService) {
+        selectedService = aiService;
+      }
     }
 
     // ❌ NO SERVICE
     if (!selectedService) {
       return NextResponse.json({
         reply:
-          "We provide PAN, Aadhaar, certificates and more.\n\nTell me which service you need 👍",
+          "We currently don't provide this exact service.\n\nTell me what you need 👍",
       });
     }
 
