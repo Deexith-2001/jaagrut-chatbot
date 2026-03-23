@@ -9,6 +9,7 @@ import {
   detectCategory,
   extractApplyLink,
   extractIntent,
+  findForcedServiceMatch,
   findExactServiceMatch,
   findBestServiceMatch,
   mapCategoryFromService,
@@ -74,6 +75,15 @@ function categoryLabel(category: ConversationState["currentCategory"]) {
 }
 
 function presentServiceName(service: ServiceRecord) {
+  const fullText = `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
+
+  if (fullText.includes("fssai")) {
+    if (/\brenew|renewal\b/.test(fullText)) {
+      return "FSSAI Food License Renewal";
+    }
+    return "FSSAI Food License Registration";
+  }
+
   const cleanDisplayName = cleanDisplayLabel(service.displayName || "");
   if (
     cleanDisplayName &&
@@ -96,6 +106,15 @@ function presentServiceName(service: ServiceRecord) {
   }
 
   return cleanedTitle || "service";
+}
+
+function serviceAlreadyReflectsIntent(serviceName: string, intent: ChatIntent) {
+  const normalized = serviceName.toLowerCase();
+  if (intent === "UPDATE") return /\b(update|correction|change)\b/.test(normalized);
+  if (intent === "RENEWAL") return /\b(renew|renewal)\b/.test(normalized);
+  if (intent === "REPRINT") return /\b(reprint|duplicate)\b/.test(normalized);
+  if (intent === "NEW") return /\bnew\b/.test(normalized);
+  return false;
 }
 
 function isServiceDiscoveryQuestion(text: string) {
@@ -168,6 +187,14 @@ function bulletLines(lines: string[]) {
   return lines.map((line) => `- ${line}`).join("\n");
 }
 
+function numberedLines(lines: string[]) {
+  return lines.map((line, index) => `${index + 1}. ${line}`).join("\n");
+}
+
+function bulletList(lines: string[]) {
+  return lines.map((line) => `- ${line}`).join("\n");
+}
+
 function hasExplicitServiceMention(text: string) {
   const normalized = text.toLowerCase();
   return [
@@ -189,12 +216,41 @@ function hasExplicitServiceMention(text: string) {
     "udid",
     "abha",
     "apaar",
+    "fssai",
+    "food license",
+    "food licence",
     "gst",
     "labour",
     "birth",
     "mobile",
     "shop act",
   ].some((keyword) => normalized.includes(keyword));
+}
+
+function forceServiceFromMessage(services: ServiceRecord[], normalizedMessage: string) {
+  if (
+    normalizedMessage.includes("fssai") ||
+    normalizedMessage.includes("food license") ||
+    normalizedMessage.includes("food licence")
+  ) {
+    if (normalizedMessage.includes("renew")) {
+      return (
+        services.find((service) => {
+          const haystack = `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
+          return haystack.includes("fssai") && (haystack.includes("renew") || haystack.includes("renewal"));
+        }) || null
+      );
+    }
+
+    return (
+      services.find((service) => {
+        const haystack = `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
+        return haystack.includes("fssai") && (haystack.includes("register") || haystack.includes("registration") || haystack.includes("new"));
+      }) || null
+    );
+  }
+
+  return null;
 }
 
 function shouldHandleAsCompanyQuestion(
@@ -509,11 +565,23 @@ async function resolveService(
   currentCategory: ConversationState["currentCategory"],
   detectedIntent: ChatIntent
 ) {
+  const forcedServiceMatch = findForcedServiceMatch(services, normalizedMessage);
+  if (forcedServiceMatch) return forcedServiceMatch;
+
   const exactServiceMatch = findExactServiceMatch(services, normalizedMessage);
   if (exactServiceMatch) return exactServiceMatch;
 
   const detectedCategoryFromMessage = detectCategory(normalizedMessage);
-  const category = currentCategory || detectedCategoryFromMessage;
+  const followUpOnly =
+    ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
+    !hasExplicitServiceMention(normalizedMessage) &&
+    detectedCategoryFromMessage === "GENERAL";
+  const category =
+    detectedCategoryFromMessage !== "GENERAL"
+      ? detectedCategoryFromMessage
+      : followUpOnly
+        ? currentCategory
+        : null;
 
   if (
     currentService &&
@@ -688,9 +756,13 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    const service = isGenericFollowUp && conversation.currentService
-      ? conversation.currentService
-      : await resolveService(
+    const forcedService = forceServiceFromMessage(services, normalizedMessage);
+
+    const service = forcedService
+      ? forcedService
+      : isGenericFollowUp && conversation.currentService
+        ? conversation.currentService
+        : await resolveService(
           message,
           normalizedMessage,
           services,
@@ -821,18 +893,29 @@ export async function POST(req: NextRequest) {
         ? await fetchContent(service.bodyUrl, "documents required proof eligibility")
         : "";
       const docsSource = topLines(`${faq}\n${bodyDocs}`);
-      const details = shortText(
-        service.documentsSummary?.length
-          ? service.documentsSummary.map((item) => `- ${item}`).join("\n")
-          : isWeakDocumentsText(docsSource)
-            ? ""
-            : docsSource,
-        safeDocumentsFallback(language, serviceName)
-      );
+      const structuredDetails = service.documentsSummary?.length
+        ? bulletList(service.documentsSummary)
+        : "";
+      const details = structuredDetails
+        ? structuredDetails
+        : shortText(
+            isWeakDocumentsText(docsSource) ? "" : docsSource,
+            safeDocumentsFallback(language, serviceName)
+          );
+      const textFields =
+        service.textFieldsSummary?.length
+          ? language === "Hindi"
+            ? `\n\nRequired details:\n\n${bulletList(service.textFieldsSummary)}`
+            : language === "Hinglish"
+              ? `\n\nRequired details:\n\n${bulletList(service.textFieldsSummary)}`
+              : language === "Telugu"
+                ? `\n\nRequired details:\n\n${bulletList(service.textFieldsSummary)}`
+                : `\n\nRequired details:\n\n${bulletList(service.textFieldsSummary)}`
+          : "";
 
       return NextResponse.json({
         reply: withOptionalApplyLink(
-          `${copy.docsLabel} for ${serviceName}:\n\n${details}\n\n${copy.askApply}`,
+          `${copy.docsLabel} for ${serviceName}:\n\n${details}${textFields}\n\n${copy.askApply}`,
           service,
           false
         ),
@@ -854,7 +937,12 @@ export async function POST(req: NextRequest) {
         : looksLikeUsefulProcessText(topLines(bodyProcess))
           ? topLines(bodyProcess)
           : "";
-      const process = !processSource
+      const structuredProcess = service.processSteps?.length
+        ? bulletList(service.processSteps)
+        : "";
+      const process = structuredProcess
+        ? structuredProcess
+        : !processSource
         ? language === "Hindi"
           ? "1. आप आवेदन शुरू करते हैं.\n2. जरूरी दस्तावेज़ साझा करते हैं.\n3. हमारी टीम विवरण verify करके आवेदन आगे बढ़ाती है."
           : language === "Hinglish"
@@ -955,20 +1043,36 @@ export async function POST(req: NextRequest) {
             : `I'm sorry to hear that. We can help you with your ${serviceName} reprint through Jaagruk Bharat.`
         : detectedIntent === "UPDATE"
           ? language === "Hindi"
-            ? `हम Jaagruk Bharat के माध्यम से आपके ${serviceName} update में मदद कर सकते हैं.`
+            ? serviceAlreadyReflectsIntent(serviceName, "UPDATE")
+              ? `हम Jaagruk Bharat के माध्यम से आपके ${serviceName} में मदद कर सकते हैं.`
+              : `हम Jaagruk Bharat के माध्यम से आपके ${serviceName} update में मदद कर सकते हैं.`
             : language === "Hinglish"
-              ? `Hum Jaagruk Bharat ke through aapke ${serviceName} update mein help kar sakte hain.`
+              ? serviceAlreadyReflectsIntent(serviceName, "UPDATE")
+                ? `Hum Jaagruk Bharat ke through aapke ${serviceName} mein help kar sakte hain.`
+                : `Hum Jaagruk Bharat ke through aapke ${serviceName} update mein help kar sakte hain.`
             : language === "Telugu"
-              ? `Jaagruk Bharat ద్వారా మీ ${serviceName} update లో మేము సహాయం చేస్తాము.`
-              : `We can help you update your ${serviceName} through Jaagruk Bharat.`
+              ? serviceAlreadyReflectsIntent(serviceName, "UPDATE")
+                ? `Jaagruk Bharat ద్వారా మీ ${serviceName} లో మేము సహాయం చేస్తాము.`
+                : `Jaagruk Bharat ద్వారా మీ ${serviceName} update లో మేము సహాయం చేస్తాము.`
+              : serviceAlreadyReflectsIntent(serviceName, "UPDATE")
+                ? `We can help you with your ${serviceName} through Jaagruk Bharat.`
+                : `We can help you update your ${serviceName} through Jaagruk Bharat.`
           : detectedIntent === "RENEWAL"
             ? language === "Hindi"
-              ? `हम Jaagruk Bharat के माध्यम से आपके ${serviceName} renewal में मदद कर सकते हैं.`
+              ? serviceAlreadyReflectsIntent(serviceName, "RENEWAL")
+                ? `हम Jaagruk Bharat के माध्यम से आपके ${serviceName} में मदद कर सकते हैं.`
+                : `हम Jaagruk Bharat के माध्यम से आपके ${serviceName} renewal में मदद कर सकते हैं.`
               : language === "Hinglish"
-                ? `Hum Jaagruk Bharat ke through aapke ${serviceName} renewal mein help kar sakte hain.`
+                ? serviceAlreadyReflectsIntent(serviceName, "RENEWAL")
+                  ? `Hum Jaagruk Bharat ke through aapke ${serviceName} mein help kar sakte hain.`
+                  : `Hum Jaagruk Bharat ke through aapke ${serviceName} renewal mein help kar sakte hain.`
               : language === "Telugu"
-                ? `Jaagruk Bharat ద్వారా మీ ${serviceName} renewal లో మేము సహాయం చేస్తాము.`
-                : `We can help you renew your ${serviceName} through Jaagruk Bharat.`
+                ? serviceAlreadyReflectsIntent(serviceName, "RENEWAL")
+                  ? `Jaagruk Bharat ద్వారా మీ ${serviceName} లో మేము సహాయం చేస్తాము.`
+                  : `Jaagruk Bharat ద్వారా మీ ${serviceName} renewal లో మేము సహాయం చేస్తాము.`
+                : serviceAlreadyReflectsIntent(serviceName, "RENEWAL")
+                  ? `We can help you with your ${serviceName} through Jaagruk Bharat.`
+                  : `We can help you renew your ${serviceName} through Jaagruk Bharat.`
             : detectedIntent === "NEW"
               ? language === "Hindi"
                 ? `हम Jaagruk Bharat के माध्यम से आपके नए ${serviceName} आवेदन में मदद कर सकते हैं.`

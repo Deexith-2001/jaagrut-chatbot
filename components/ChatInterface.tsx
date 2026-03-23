@@ -170,12 +170,30 @@ export default function ChatInterface() {
                   py={3}
                   borderRadius="2xl"
                   maxW={{ base: "92%", md: "80%" }}
-                  whiteSpace="pre-wrap"
                 >
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      p: ({ children }) => <Text mb={3}>{children}</Text>,
+                      p: ({ children }) => (
+                        <Text mb={2} lineHeight="1.6">
+                          {children}
+                        </Text>
+                      ),
+                      ol: ({ children }) => (
+                        <Box as="ol" pl={5} mb={2} style={{ listStyleType: "decimal" }}>
+                          {children}
+                        </Box>
+                      ),
+                      ul: ({ children }) => (
+                        <Box as="ul" pl={5} mb={2} style={{ listStyleType: "disc" }}>
+                          {children}
+                        </Box>
+                      ),
+                      li: ({ children }) => (
+                        <Box as="li" mb={0.5}>
+                          {children}
+                        </Box>
+                      ),
                       a: (props) => (
                         <a
                           {...props}

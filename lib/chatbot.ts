@@ -43,6 +43,7 @@ export type ServiceRecord = {
   process?: string;
   processSteps?: string[];
   documentsSummary?: string[];
+  textFieldsSummary?: string[];
   feesSummary?: string;
   link?: string;
   bodyUrl?: string;
@@ -88,7 +89,7 @@ const categoryKeywords: Array<{
   },
   {
     category: "DRIVING_LICENSE",
-    keywords: ["driving license", "driving licence", "license", "licence", "dl"],
+    keywords: ["driving license", "driving licence", "license number", "licence number", "learner", "learners", "dl"],
   },
   {
     category: "HSRP",
@@ -104,7 +105,7 @@ const categoryKeywords: Array<{
   },
   {
     category: "BUSINESS_REGISTRATION",
-    keywords: ["gst", "udyam", "msme", "company", "firm", "business"],
+    keywords: ["gst", "gstin", "udyam", "msme", "msmes", "enterprise", "enterprises", "company", "firm", "business", "fssai", "food license", "food licence", "shop act", "llp", "dsc"],
   },
   {
     category: "TRAVEL_DARSHAN",
@@ -272,6 +273,24 @@ export function findExactServiceMatch(
   const normalizedMessage = normalizeMatchText(message);
   if (!normalizedMessage) return null;
 
+  if (normalizedMessage.includes("fssai")) {
+    if (/\brenew|renewal\b/.test(normalizedMessage)) {
+      const renewalService = services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return haystack.includes("fssai") && (haystack.includes("renew") || haystack.includes("renewal"));
+      });
+      if (renewalService) return renewalService;
+    }
+
+    if (/\bregister|registration\b/.test(normalizedMessage)) {
+      const registrationService = services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return haystack.includes("fssai") && (haystack.includes("register") || haystack.includes("registration"));
+      });
+      if (registrationService) return registrationService;
+    }
+  }
+
   return (
     services.find((service) => {
       const candidates = [
@@ -290,6 +309,46 @@ export function findExactServiceMatch(
       );
     }) || null
   );
+}
+
+export function findForcedServiceMatch(
+  services: ServiceRecord[],
+  message: string
+) {
+  const normalizedMessage = normalizeMatchText(message);
+  if (!normalizedMessage) return null;
+
+  if (
+    normalizedMessage.includes("fssai") ||
+    normalizedMessage.includes("food license") ||
+    normalizedMessage.includes("food licence")
+  ) {
+    if (/\brenew|renewal\b/.test(normalizedMessage)) {
+      return (
+        services.find((service) => {
+          const haystack = buildServiceKeywords(service);
+          return (
+            haystack.includes("fssai") &&
+            (haystack.includes("renew") || haystack.includes("renewal"))
+          );
+        }) || null
+      );
+    }
+
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (
+          haystack.includes("fssai") &&
+          (haystack.includes("register") ||
+            haystack.includes("registration") ||
+            haystack.includes("new"))
+        );
+      }) || null
+    );
+  }
+
+  return null;
 }
 
 export function findBestServiceMatch(
@@ -400,6 +459,13 @@ export function mapServiceFromCategoryAndIntent(
       return haystack.includes("renewal") || haystack.includes("renew");
     }
 
+    if (category === "BUSINESS_REGISTRATION" && intent === "RENEWAL") {
+      return (
+        haystack.includes("fssai") &&
+        (haystack.includes("renewal") || haystack.includes("renew"))
+      );
+    }
+
     if (category === "DRIVING_LICENSE" && intent === "UPDATE") {
       return haystack.includes("address change") || haystack.includes("update");
     }
@@ -454,7 +520,7 @@ export function mapServiceFromCategoryAndIntent(
 
   if (titleMatch) return titleMatch;
 
-  return narrowed[0] || null;
+  return null;
 }
 
 export function extractApplyLink(service: ServiceRecord | null) {
