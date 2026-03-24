@@ -559,6 +559,15 @@ async function resolveService(
   const exactServiceMatch = findExactServiceMatch(services, normalizedMessage);
   if (exactServiceMatch) return exactServiceMatch;
 
+  // If current service title words appear in message, use current service
+  if (currentService) {
+    const currentTitleWords = currentService.title.toLowerCase().split(/\s+/);
+    const messageWords = normalizedMessage.toLowerCase().split(/\s+/);
+    if (currentTitleWords.some(word => messageWords.includes(word))) {
+      return currentService;
+    }
+  }
+
   const detectedCategoryFromMessage = detectCategory(normalizedMessage);
   const followUpOnly =
     ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
