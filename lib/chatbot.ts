@@ -51,6 +51,9 @@ export type ServiceRecord = {
   aliases?: string[];
   status?: string;
   isActive?: boolean;
+  timelineSummary?: string;
+  trustPoints?: string[];
+  comparisonPoints?: string[];
 };
 
 export type ConversationState = {
@@ -127,7 +130,7 @@ const intentKeywordMap: Array<{ intent: ChatIntent; keywords: string[] }> = [
   { intent: "DOCUMENTS", keywords: ["document", "documents", "proof", "required"] },
   { intent: "PROCESS", keywords: ["process", "procedure", "steps", "how"] },
   { intent: "FEES", keywords: ["fees", "fee", "charges", "price", "cost"] },
-  { intent: "STATUS", keywords: ["status", "track", "tracking", "progress"] },
+  { intent: "STATUS", keywords: ["status", "track", "tracking", "progress", "how long", "kitna time", "kitne din", "kab tak", "delivery", "timeline"] },
   { intent: "APPLY", keywords: ["apply", "application", "link", "start", "yes"] },
   { intent: "NEW", keywords: ["new", "fresh", "first time"] },
 ];
