@@ -256,10 +256,14 @@ function forceServiceFromMessage(services: ServiceRecord[], normalizedMessage: s
 function shouldHandleAsCompanyQuestion(
   companyIntent: string | null,
   normalizedMessage: string,
-  detectedIntent: ChatIntent
+  detectedIntent: ChatIntent,
+  hasCurrentService: boolean
 ) {
   if (!companyIntent) return false;
-  if (["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent)) return false;
+  if (["DOCUMENTS", "PROCESS", "APPLY", "STATUS"].includes(detectedIntent)) return false;
+  // Allow FEES intent for comparison questions when there's context
+  if (detectedIntent === "FEES" && companyIntent === "COMPARISON" && hasCurrentService) return true;
+  if (detectedIntent === "FEES") return false;
   return !hasExplicitServiceMention(normalizedMessage) || companyIntent === "TRUST" || companyIntent === "COMPARISON";
 }
 
@@ -379,69 +383,53 @@ function buildCompanyReply(
 ) {
   const serviceName = activeService ? presentServiceName(activeService) : null;
   const applyLine = buildApplyLine(activeService);
+  const trustPoints =
+    activeService?.trustPoints?.length
+      ? activeService.trustPoints
+      : [
+          "guided support from start to application",
+          "document verification support",
+          "single platform experience without multiple portals",
+        ];
+  const comparisonPoints =
+    activeService?.comparisonPoints?.length
+      ? activeService.comparisonPoints
+      : [
+          "right service identification",
+          "documents and process guidance",
+          "apply journey on Jaagruk Bharat only",
+        ];
 
   if (intent === "TRUST") {
     if (language === "Hindi") {
-      return `${serviceName ? `${serviceName} के लिए ` : ""}आप Jaagruk Bharat पर भरोसा कर सकते हैं क्योंकि हमारी टीम आपको सही सेवा चुनने, दस्तावेज़ समझने और आवेदन पूरा करने में step-by-step मदद करती है.\n\n${bulletLines([
-        "guided support from start to application",
-        "document verification support",
-        "single platform experience without multiple portals",
-      ])}\n\n${copy.askMore}${applyLine}`;
+      return `${serviceName ? `${serviceName} के लिए ` : ""}आप Jaagruk Bharat पर भरोसा कर सकते हैं क्योंकि हमारी टीम आपको सही सेवा चुनने, दस्तावेज़ समझने और आवेदन पूरा करने में step-by-step मदद करती है.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
     }
 
     if (language === "Hinglish") {
-      return `${serviceName ? `${serviceName} ke liye ` : ""}aap Jaagruk Bharat par trust kar sakte hain kyunki hamari team aapko sahi service choose karne, documents samajhne aur application complete karne mein step-by-step help karti hai.\n\n${bulletLines([
-        "guided support from start to application",
-        "document verification support",
-        "single platform experience without multiple portals",
-      ])}\n\n${copy.askMore}${applyLine}`;
+      return `${serviceName ? `${serviceName} ke liye ` : ""}aap Jaagruk Bharat par trust kar sakte hain kyunki hamari team aapko sahi service choose karne, documents samajhne aur application complete karne mein step-by-step help karti hai.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
     }
 
     if (language === "Telugu") {
-      return `${serviceName ? `${serviceName} కోసం ` : ""}Jaagruk Bharat ను నమ్మవచ్చు, ఎందుకంటే మా టీమ్ సరైన సేవను ఎంచుకోవడం నుంచి అప్లికేషన్ పూర్తి చేసే వరకు step-by-step సహాయం చేస్తుంది.\n\n${bulletLines([
-        "start నుంచి application వరకు guided support",
-        "document verification support",
-        "multiple portals అవసరం లేకుండా single platform experience",
-      ])}\n\n${copy.askMore}${applyLine}`;
+      return `${serviceName ? `${serviceName} కోసం ` : ""}Jaagruk Bharat ను నమ్మవచ్చు, ఎందుకంటే మా టీమ్ సరైన సేవను ఎంచుకోవడం నుంచి అప్లికేషన్ పూర్తి చేసే వరకు step-by-step సహాయం చేస్తుంది.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
     }
 
-    return `${serviceName ? `For your ${serviceName} service, ` : ""}you can trust Jaagruk Bharat because our team guides you from service selection to application submission.\n\n${bulletLines([
-      "guided support from start to apply",
-      "help with documents and next steps",
-      "one platform instead of multiple confusing portals",
-    ])}\n\n${copy.askMore}${applyLine}`;
+    return `${serviceName ? `For your ${serviceName} service, ` : ""}you can trust Jaagruk Bharat because our team guides you from service selection to application submission.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
   }
 
   if (intent === "COMPARISON") {
     if (language === "Hindi") {
-      return `Jaagruk Bharat का फर्क यह है कि हम सिर्फ जानकारी नहीं देते, बल्कि आपको ${serviceName || "service"} application तक guide करते हैं.\n\n${bulletLines([
-        "right service identification",
-        "documents and process guidance",
-        "apply journey on Jaagruk Bharat only",
-      ])}\n\n${copy.askMore}${applyLine}`;
+      return `Jaagruk Bharat का फर्क यह है कि हम सिर्फ जानकारी नहीं देते, बल्कि आपको ${serviceName || "service"} application तक guide करते हैं.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
     }
 
     if (language === "Hinglish") {
-      return `Jaagruk Bharat ka difference yeh hai ki hum sirf information nahi dete, balki aapko ${serviceName || "service"} application tak guide karte hain.\n\n${bulletLines([
-        "right service identification",
-        "documents and process guidance",
-        "apply journey on Jaagruk Bharat only",
-      ])}\n\n${copy.askMore}${applyLine}`;
+      return `Jaagruk Bharat ka difference yeh hai ki hum sirf information nahi dete, balki aapko ${serviceName || "service"} application tak guide karte hain.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
     }
 
     if (language === "Telugu") {
-      return `Jaagruk Bharat లో తేడా ఏమిటంటే, మేము కేవలం సమాచారం మాత్రమే కాదు, ${serviceName || "service"} application వరకు మీకు guide చేస్తాము.\n\n${bulletLines([
-        "right service identification",
-        "documents and process guidance",
-        "Jaagruk Bharat లోనే apply journey",
-      ])}\n\n${copy.askMore}${applyLine}`;
+      return `Jaagruk Bharat లో తేడా ఏమిటంటే, మేము కేవలం సమాచారం మాత్రమే కాదు, ${serviceName || "service"} application వరకు మీకు guide చేస్తాము.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
     }
 
-    return `Jaagruk Bharat is different because we do not stop at giving information. We guide you all the way to the ${serviceName || "service"} application.\n\n${bulletLines([
-      "right service identification",
-      "clear document and process guidance",
-      "focused apply journey through Jaagruk Bharat",
-    ])}\n\n${copy.askMore}${applyLine}`;
+    return `Jaagruk Bharat is different because we do not stop at giving information. We guide you all the way to the ${serviceName || "service"} application.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
   }
 
   return null;
@@ -651,9 +639,9 @@ async function resolveService(
       ? services.filter((service) => mapCategoryFromService(service) === category)
       : services;
 
-  let service = await detectServiceWithAI(message, aiScopedServices);
+  let service = await detectServiceWithAI(message, aiScopedServices, currentService);
   if (!service && aiScopedServices !== services) {
-    service = await detectServiceWithAI(message, services);
+    service = await detectServiceWithAI(message, services, currentService);
   }
   if (service) return service;
   service = mapServiceFromCategoryAndIntent(
@@ -727,7 +715,7 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    if (shouldHandleAsCompanyQuestion(companyIntent, normalizedMessage, detectedIntent)) {
+    if (shouldHandleAsCompanyQuestion(companyIntent, normalizedMessage, detectedIntent, !!conversation.currentService)) {
       const directReply = buildCompanyReply(
         companyIntent!,
         language,
@@ -997,8 +985,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (detectedIntent === "STATUS") {
+      const statusReply = service.timelineSummary
+        ? language === "Hindi"
+          ? `${serviceName} के लिए expected timeline:\n\n${service.timelineSummary}\n\n${copy.askMore}`
+          : language === "Hinglish"
+            ? `${serviceName} ke liye expected timeline:\n\n${service.timelineSummary}\n\n${copy.askMore}`
+            : language === "Telugu"
+              ? `${serviceName} కోసం expected timeline:\n\n${service.timelineSummary}\n\n${copy.askMore}`
+              : `Expected timeline for ${serviceName}:\n\n${service.timelineSummary}\n\n${copy.askMore}`
+        : `${copy.statusLabel}\n\n${copy.askMore}`;
+
       return NextResponse.json({
-        reply: `${copy.statusLabel}\n\n${copy.askMore}`,
+        reply: statusReply,
         service,
         conversation: {
           ...nextConversation,

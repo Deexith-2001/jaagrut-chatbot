@@ -6,15 +6,19 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 
-export async function detectServiceWithAI(message: string, services: any[]) {
+export async function detectServiceWithAI(message: string, services: any[], currentService?: any) {
   try {
     const serviceList = services
       .slice(0, 80)
       .map((s) => s.displayName || s.title)
       .join("\n");
 
+    const currentServiceContext = currentService ? 
+      `Current conversation context: User is discussing ${currentService.displayName || currentService.title}. ` : 
+      "";
+
     const prompt = `
-User message: "${message}"
+${currentServiceContext}User message: "${message}"
 
 Which service is the user looking for?
 

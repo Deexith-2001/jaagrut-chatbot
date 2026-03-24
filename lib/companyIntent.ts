@@ -20,9 +20,17 @@ export function detectCompanyIntent(text: string) {
     text.includes("difference") ||
     text.includes("why jaagruk") ||
     text.includes("why should i choose") ||
+    text.includes("why choose") ||
+    text.includes("why pay") ||
+    text.includes("why 299") ||
+    text.includes("why rs") ||
+    text.includes("why ₹") ||
     text.includes("other services") ||
     text.includes("other websites") ||
-    text.includes("better than")
+    text.includes("better than") ||
+    text.includes("vs") ||
+    text.includes("versus") ||
+    (text.includes("why") && (text.includes("pay") || text.includes("fee") || text.includes("cost") || text.includes("charge")))
   )
     return "COMPARISON";
 
