@@ -402,6 +402,15 @@ export function findBestServiceMatch(
       }
     }
 
+    // Boost for explicit keyword matches
+    const explicitKeywords = ["pan", "aadhaar", "aadhar", "uidai", "passport", "voter", "epic", "driving license", "driving licence", "license number", "licence number", "dl", "hsrp", "number plate", "certificate", "income certificate", "caste", "birth certificate", "scheme", "yojana", "gst", "gstin", "udyam", "msme", "msmes", "enterprise", "enterprises", "company", "firm", "business", "fssai", "food license", "food licence", "shop act", "llp", "dsc"];
+    const serviceText = buildServiceKeywords(service);
+    for (const keyword of explicitKeywords) {
+      if (messageTokens.includes(keyword) && serviceText.includes(keyword)) {
+        score += 20;
+      }
+    }
+
     if (mapCategoryFromService(service) === category) {
       score += 1;
     }
