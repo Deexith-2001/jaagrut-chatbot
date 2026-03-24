@@ -580,6 +580,19 @@ async function resolveService(
     return currentService;
   }
 
+  // If current service matches explicit mention, keep it
+  if (currentService && hasExplicitServiceMention(normalizedMessage)) {
+    const currentTitle = currentService.title.toLowerCase();
+    const currentAliases = (currentService.aliases || []).map(a => a.toLowerCase());
+    const messageWords = normalizedMessage.toLowerCase().split(/\s+/);
+    const matchesCurrent = [currentTitle, ...currentAliases].some(term =>
+      messageWords.some(word => term.includes(word) || word.includes(term))
+    );
+    if (matchesCurrent) {
+      return currentService;
+    }
+  }
+
   if (detectedCategoryFromMessage !== "GENERAL") {
     const strictCategoryIntentMatch = mapServiceFromCategoryAndIntent(
       services,
