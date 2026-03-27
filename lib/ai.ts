@@ -19,7 +19,19 @@ export async function generateAIResponse({
   language,
 }: any) {
   try {
-    const prompt = `
+    const isGeneral = !service;
+
+    const prompt = isGeneral ? `
+You are Jaagruk Bharat AI Assistant.
+
+Answer the user's question helpfully and accurately based on general knowledge.
+- Keep answers clear and concise.
+- If the question is about government schemes or services, mention Jaagruk Bharat can help apply.
+- Do not mention sources of information.
+- Reply in ${language}.
+
+User Question: ${message}
+` : `
 You are Jaagruk Bharat AI Assistant.
 
 STRICT RULES:

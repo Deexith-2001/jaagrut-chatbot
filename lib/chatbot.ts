@@ -3,6 +3,7 @@ export type ChatIntent =
   | "UPDATE"
   | "REPRINT"
   | "RENEWAL"
+  | "ELIGIBILITY"
   | "DOCUMENTS"
   | "PROCESS"
   | "FEES"
@@ -44,6 +45,7 @@ export type ServiceRecord = {
   processSteps?: string[];
   documentsSummary?: string[];
   textFieldsSummary?: string[];
+  eligibilitySummary?: string[];
   feesSummary?: string;
   link?: string;
   redirectionLink?: string;
@@ -131,6 +133,10 @@ const intentKeywordMap: Array<{ intent: ChatIntent; keywords: string[] }> = [
   {
     intent: "UPDATE",
     keywords: ["update", "correction", "correct", "change", "modify", "galat", "sudhar", "wrong"],
+  },
+  {
+    intent: "ELIGIBILITY",
+    keywords: ["eligibility", "eligible", "criteria", "who can apply", "am i eligible", "can i apply"],
   },
   { intent: "DOCUMENTS", keywords: ["document", "documents", "proof", "required"] },
   { intent: "PROCESS", keywords: ["process", "procedure", "steps", "how"] },
@@ -694,6 +700,7 @@ export function mapServiceFromCategoryAndIntent(
     UPDATE: ["update", "correction", "change", "modify"],
     REPRINT: ["reprint", "duplicate", "lost"],
     RENEWAL: ["renewal", "renew", "expired"],
+    ELIGIBILITY: ["eligibility", "eligible", "criteria"],
     DOCUMENTS: [],
     PROCESS: [],
     FEES: [],

@@ -230,6 +230,15 @@ function resolveDetectedIntent(message: string, normalizedMessage: string): Chat
   const raw = `${message} ${normalizedMessage}`.toLowerCase();
 
   if (
+    raw.includes("eligibility") ||
+    raw.includes("eligible") ||
+    raw.includes("criteria") ||
+    raw.includes("who can apply")
+  ) {
+    return "ELIGIBILITY";
+  }
+
+  if (
     raw.includes("documents") ||
     raw.includes("document") ||
     raw.includes("required") ||
@@ -598,7 +607,7 @@ function shouldHandleAsCompanyQuestion(
 
   if (companyReferenceQuestion && ["TRUST", "COMPARISON"].includes(companyIntent)) return true;
 
-  if (["DOCUMENTS", "PROCESS", "APPLY", "STATUS"].includes(detectedIntent)) return false;
+  if (["DOCUMENTS", "PROCESS", "APPLY", "STATUS", "ELIGIBILITY"].includes(detectedIntent)) return false;
   // Allow FEES intent for comparison questions when there's context
   if (detectedIntent === "FEES" && companyIntent === "COMPARISON" && hasCurrentService) return true;
   if (detectedIntent === "FEES") return false;
@@ -755,6 +764,168 @@ function findLearnerDrivingService(services: ServiceRecord[]) {
   );
 }
 
+function extractVehicleRegistrationYear(normalizedMessage: string) {
+  const match = normalizedMessage.match(/\b(19\d{2}|20\d{2})\b/);
+  return match ? Number(match[1]) : null;
+}
+
+function isHsrpEligibilityQuestion(normalizedMessage: string) {
+  const hasHsrpContext =
+    normalizedMessage.includes("hsrp") ||
+    normalizedMessage.includes("number plate") ||
+    normalizedMessage.includes("high security number plate") ||
+    normalizedMessage.includes("registration plate");
+
+  if (!hasHsrpContext) return false;
+
+  const hasEligibilitySignal =
+    normalizedMessage.includes("can i") ||
+    normalizedMessage.includes("apply") ||
+    normalizedMessage.includes("eligible") ||
+    normalizedMessage.includes("registration") ||
+    normalizedMessage.includes("registered") ||
+    normalizedMessage.includes("vehicle") ||
+    normalizedMessage.includes("car") ||
+    normalizedMessage.includes("bike");
+
+  return hasEligibilitySignal && extractVehicleRegistrationYear(normalizedMessage) !== null;
+}
+
+function isVehicleYearEligibilityFollowUp(normalizedMessage: string) {
+  const hasRegistrationYear = extractVehicleRegistrationYear(normalizedMessage) !== null;
+  const hasEligibilitySignal =
+    normalizedMessage.includes("can i") ||
+    normalizedMessage.includes("eligible") ||
+    normalizedMessage.includes("apply") ||
+    normalizedMessage.includes("service") ||
+    normalizedMessage.includes("registered") ||
+    normalizedMessage.includes("registration") ||
+    normalizedMessage.includes("vehicle") ||
+    normalizedMessage.includes("car") ||
+    normalizedMessage.includes("bike");
+
+  return hasRegistrationYear && hasEligibilitySignal;
+}
+
+function isHsrpContextActive(
+  currentService: ServiceRecord | null,
+  currentCategory: ConversationState["currentCategory"]
+) {
+  if (currentCategory === "HSRP") return true;
+  return mapCategoryFromService(currentService) === "HSRP";
+}
+
+function findHsrpService(services: ServiceRecord[]) {
+  return (
+    services.find((service) => {
+      const haystack = `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
+      return haystack.includes("hsrp") || haystack.includes("high security number plate");
+    }) || null
+  );
+}
+
+function buildHsrpEligibilityReply(
+  language: ConversationState["language"],
+  hsrpService: ServiceRecord | null,
+  registrationYear: number
+) {
+  const serviceName = hsrpService ? presentServiceName(hsrpService) : "HSRP Number Plate Booking";
+
+  if (registrationYear < 2019) {
+    if (language === "Hindi") {
+      return `${serviceName} के लिए आपका vehicle year eligible लगता है.
+
+- April 2019 से पहले registered vehicles के लिए HSRP retrofit booking की जा सकती है.
+- RC details share करके आप booking process शुरू कर सकते हैं.
+- अगर आप चाहें तो मैं documents, process, fees या apply link अभी बता सकता हूँ.`;
+    }
+
+    if (language === "Hinglish") {
+      return `${serviceName} ke liye aapka vehicle year eligible lagta hai.
+
+- April 2019 se pehle registered vehicles ke liye HSRP retrofit booking ki ja sakti hai.
+- RC details share karke aap booking process start kar sakte ho.
+- Agar aap chaho to main documents, process, fees ya apply link abhi bata sakta hoon.`;
+    }
+
+    if (language === "Telugu") {
+      return `${serviceName} కోసం మీ vehicle year eligible గా కనిపిస్తోంది.
+
+- April 2019 కి ముందు registered అయిన vehicles కోసం HSRP retrofit booking చేయవచ్చు.
+- RC details షేర్ చేసి మీరు booking process ప్రారంభించవచ్చు.
+- మీరు కోరుకుంటే నేను documents, process, fees లేదా apply link ఇప్పుడే చెబుతాను.`;
+    }
+
+    return `Your vehicle year looks eligible for ${serviceName}.
+
+- HSRP retrofit booking is mainly for vehicles registered before April 2019.
+- You can start the booking by sharing your RC details.
+- If you want, I can show the documents, process, fees, or apply link now.`;
+  }
+
+  if (registrationYear === 2019) {
+    if (language === "Hindi") {
+      return `${serviceName} के लिए 2019 cutoff important है.
+
+- April 1, 2019 से पहले registered vehicle हो तो HSRP booking apply की जा सकती है.
+- April 1, 2019 के बाद registered vehicle में HSRP आमतौर पर dealership से पहले से लगा होना चाहिए.
+- अगर आप exact registration month बताएं, तो मैं next step सही बता दूंगा.`;
+    }
+
+    if (language === "Hinglish") {
+      return `${serviceName} ke liye 2019 cutoff important hai.
+
+- Agar vehicle April 1, 2019 se pehle registered hai to HSRP booking apply ki ja sakti hai.
+- Agar vehicle April 1, 2019 ke baad registered hai to HSRP usually dealership se pehle se fitted hota hai.
+- Aap exact registration month bata do, main sahi next step bata deta hoon.`;
+    }
+
+    if (language === "Telugu") {
+      return `${serviceName} కోసం 2019 cutoff ముఖ్యమైనది.
+
+- Vehicle April 1, 2019 కి ముందు registered అయితే HSRP booking apply చేయవచ్చు.
+- Vehicle April 1, 2019 తర్వాత registered అయితే HSRP సాధారణంగా dealership నుంచే fitted అయి ఉండాలి.
+- మీరు exact registration month చెబితే, నేను సరైన next step చెబుతాను.`;
+    }
+
+    return `The 2019 cutoff matters for ${serviceName}.
+
+- If the vehicle was registered before April 1, 2019, HSRP booking can usually be applied for.
+- If it was registered on or after April 1, 2019, HSRP should usually already be fitted by the dealership.
+- Share the exact registration month and I can tell you the correct next step.`;
+  }
+
+  if (language === "Hindi") {
+    return `${registrationYear} registered vehicle के लिए नई ${serviceName} booking आमतौर पर नहीं करनी होती.
+
+- April 1, 2019 के बाद registered vehicles में HSRP dealership से ही लगी हुई होनी चाहिए.
+- Jaagruk Bharat की HSRP booking आमतौर पर pre-April 2019 vehicles के लिए होती है.
+- आप plate पर snap-lock और laser code check कर लें. अगर plate missing, damaged, या incorrect है तो मैं next step बताता हूँ.`;
+  }
+
+  if (language === "Hinglish") {
+    return `${registrationYear} registered vehicle ke liye nayi ${serviceName} booking usually nahi karni hoti.
+
+- April 1, 2019 ke baad registered vehicles mein HSRP dealership se hi fitted hona chahiye.
+- Jaagruk Bharat ki HSRP booking mainly pre-April 2019 vehicles ke liye hoti hai.
+- Aap plate par snap-lock aur laser code check kar lo. Agar plate missing, damaged, ya incorrect hai to main next step bata deta hoon.`;
+  }
+
+  if (language === "Telugu") {
+    return `${registrationYear} registered vehicle కోసం కొత్త ${serviceName} booking సాధారణంగా అవసరం ఉండదు.
+
+- April 1, 2019 తర్వాత registered అయిన vehicles కి HSRP dealership నుంచే fitted అయి ఉండాలి.
+- Jaagruk Bharat HSRP booking ప్రధానంగా pre-April 2019 vehicles కోసం ఉంటుంది.
+- మీ plate పై snap-lock మరియు laser code ఉన్నాయో check చేయండి. Plate missing, damaged, లేదా incorrect అయితే నేను next step చెబుతాను.`;
+  }
+
+  return `A newly registered ${registrationYear} vehicle usually should not need a fresh ${serviceName} booking.
+
+- Vehicles registered on or after April 1, 2019 should usually already have HSRP fitted by the dealership.
+- Jaagruk Bharat HSRP booking is mainly for pre-April 2019 vehicles.
+- Please check whether your plate already has the snap-lock and laser code. If the plate is missing, damaged, or incorrect, I can guide the next step.`;
+}
+
 function buildDrivingAgeEligibilityReply(
   language: ConversationState["language"],
   learnerService: ServiceRecord | null
@@ -843,6 +1014,7 @@ type CopyBlock = {
   askChoice: string;
   askApply: string;
   askMore: string;
+  eligibilityLabel: string;
   docsLabel: string;
   processLabel: string;
   feesLabel: string;
@@ -859,6 +1031,7 @@ function getCopy(language: ConversationState["language"]): CopyBlock {
       askChoice: "Kya aap abhi apply karna chahte hain, ya pehle documents, process ya fees dekhna chahenge?",
       askApply: "Kya aap abhi application start karna chahte hain?",
       askMore: "Kya aap documents, process, fees ya apply link mein se kuch dekhna chahenge?",
+      eligibilityLabel: "Eligibility criteria",
       docsLabel: "Required documents",
       processLabel: "Process",
       feesLabel: "Fees information",
@@ -876,6 +1049,7 @@ function getCopy(language: ConversationState["language"]): CopyBlock {
       askChoice: "क्या आप अभी आवेदन करना चाहते हैं, या पहले दस्तावेज़, प्रक्रिया या शुल्क जानना चाहेंगे?",
       askApply: "क्या आप अभी आवेदन शुरू करना चाहते हैं?",
       askMore: "क्या आप दस्तावेज़, प्रक्रिया, शुल्क या आवेदन लिंक में से कुछ देखना चाहेंगे?",
+      eligibilityLabel: "पात्रता मानदंड",
       docsLabel: "जरूरी दस्तावेज़",
       processLabel: "प्रक्रिया",
       feesLabel: "शुल्क जानकारी",
@@ -893,6 +1067,7 @@ function getCopy(language: ConversationState["language"]): CopyBlock {
         "మీరు ఇప్పుడే అప్లై చేయాలనుకుంటున్నారా, లేక ముందుగా డాక్యుమెంట్లు, ప్రాసెస్ లేదా ఫీజులు చూడాలనుకుంటున్నారా?",
       askApply: "మీరు ఇప్పుడే అప్లికేషన్ ప్రారంభించాలనుకుంటున్నారా?",
       askMore: "డాక్యుమెంట్లు, ప్రాసెస్, ఫీజులు లేదా అప్లై లింక్‌లో ఏది చూడాలనుకుంటున్నారు?",
+      eligibilityLabel: "Eligibility criteria",
       docsLabel: "అవసరమైన డాక్యుమెంట్లు",
       processLabel: "ప్రాసెస్",
       feesLabel: "ఫీజుల సమాచారం",
@@ -909,6 +1084,7 @@ function getCopy(language: ConversationState["language"]): CopyBlock {
       "Would you like to apply now, or would you prefer to see documents, process, or fees first?",
     askApply: "Would you like to start the application now?",
     askMore: "Would you like to see documents, process, fees, or the apply link next?",
+    eligibilityLabel: "Eligibility criteria",
     docsLabel: "Required documents",
     processLabel: "Process",
     feesLabel: "Fees information",
@@ -936,16 +1112,316 @@ function identifyStage(intent: ChatIntent, currentStage: ConversationStage) {
   return "ASK_USER_INTENT";
 }
 
-function quickRepliesForStage(stage: ConversationStage) {
+function getEligibilityDetails(service: ServiceRecord) {
+  if (service.eligibilitySummary?.length) {
+    return bulletList(service.eligibilitySummary);
+  }
+
+  const haystack = buildServiceMatchText(service);
+  const category = mapCategoryFromService(service);
+
+  if (category === "PAN") {
+    if (/reprint|duplicate|correction|update/.test(haystack)) {
+      return bulletList([
+        "The applicant should already have an existing PAN record",
+        "Supporting proof should be available for any change or correction request",
+        "For reprint, PAN details should match the existing Income Tax database",
+      ]);
+    }
+
+    return bulletList([
+      "Individuals, minors through a parent or guardian, and eligible non-individual entities can apply",
+      "Identity, date of birth, and address proof should be available as required",
+      "The applicant should need PAN for tax, banking, or compliance purposes",
+    ]);
+  }
+
+  if (category === "AADHAAR") {
+    if (haystack.includes("pan") && haystack.includes("link")) {
+      return bulletList([
+        "The applicant should have both a valid Aadhaar and PAN",
+        "Basic details like name, date of birth, and gender should substantially match across both records",
+        "OTP verification or access to the linked mobile may be required during the process",
+      ]);
+    }
+
+    if (haystack.includes("npci")) {
+      return bulletList([
+        "The applicant should have a valid Aadhaar number",
+        "A bank account eligible for Aadhaar seeding should be available",
+        "The bank should support NPCI mapper or DBT-based Aadhaar linking",
+      ]);
+    }
+
+    if (haystack.includes("pvc")) {
+      return bulletList([
+        "The applicant should already have a valid Aadhaar number",
+        "Aadhaar details should be active and correct in the UIDAI record",
+        "OTP access through the registered mobile or the supported verification path may be required",
+      ]);
+    }
+
+    if (/update|correction|change|address/.test(haystack)) {
+      return bulletList([
+        "The applicant should already have an Aadhaar number",
+        "Supporting proof should be available for the field being updated",
+        "The mobile number and Aadhaar details should be accessible for verification",
+      ]);
+    }
+  }
+
+  if (category === "PASSPORT") {
+    if (/renew|renewal/.test(haystack)) {
+      return bulletList([
+        "The applicant should already have an existing passport",
+        "The passport holder should be applying for renewal, reissue, or expiry-related continuation",
+        "Current identity and address proof should be available as required",
+      ]);
+    }
+
+    return bulletList([
+      "The applicant should be an Indian citizen",
+      "Date of birth, identity, and address proof should be available",
+      "For minors, parent or guardian details and consent are usually required",
+    ]);
+  }
+
+  if (category === "VOTER_ID") {
+    if ((haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("link")) {
+      return bulletList([
+        "The applicant should already have a Voter ID or EPIC record",
+        "A valid Aadhaar number should be available for linking",
+        "Basic details should match closely across the voter and Aadhaar records",
+      ]);
+    }
+
+    if (/update|correction|change/.test(haystack)) {
+      return bulletList([
+        "The applicant should already have a voter record or EPIC number",
+        "Supporting proof should be available for the field being corrected",
+        "The applicant should belong to the relevant constituency record being updated",
+      ]);
+    }
+
+    return bulletList([
+      "The applicant should be an Indian citizen",
+      "The applicant should generally be 18 years or older on the qualifying date",
+      "The applicant should ordinarily reside in the constituency where registration is requested",
+    ]);
+  }
+
+  if (category === "DRIVING_LICENSE") {
+    if (haystack.includes("learner")) {
+      return bulletList([
+        "For gearless two-wheelers up to 50cc, some states allow 16+ applicants with parent or guardian consent",
+        "For regular motor vehicle categories, applicants are usually required to be 18+",
+        "Identity, address proof, and basic verification requirements should be met as applicable",
+      ]);
+    }
+
+    if (haystack.includes("international")) {
+      return bulletList([
+        "The applicant should already hold a valid Indian Driving License",
+        "A valid passport and travel-related documents are usually required",
+        "The Driving License should be valid for the vehicle class requested",
+      ]);
+    }
+
+    if (/renew|renewal|duplicate|reprint|update|address/.test(haystack)) {
+      return bulletList([
+        "The applicant should already hold an existing Driving License",
+        "The license details should be traceable in the transport authority records",
+        "Supporting proof should be available if address or other details are being updated",
+      ]);
+    }
+
+    return bulletList([
+      "The applicant should hold a valid Learner License for the required class before applying for a Permanent License",
+      "The minimum age should match the vehicle class rules, usually 18+ for regular motor vehicles",
+      "The applicant should be ready for the required driving test or authority verification",
+    ]);
+  }
+
+  if (category === "BUSINESS_REGISTRATION") {
+    if (haystack.includes("gst")) {
+      return bulletList([
+        "Businesses crossing the applicable GST threshold or choosing voluntary registration can apply",
+        "A PAN, business details, and principal place of business information should be available",
+        "The authorised proprietor, partner, director, or signatory should complete the filing",
+      ]);
+    }
+
+    if (haystack.includes("fssai")) {
+      if (/renew|renewal/.test(haystack)) {
+        return bulletList([
+          "The applicant should already hold an existing FSSAI registration or licence",
+          "The food business should continue to operate under the same or updated entity details",
+          "Renewal should usually be initiated before expiry with the required business details",
+        ]);
+      }
+
+      return bulletList([
+        "Food business operators such as manufacturers, traders, transporters, restaurants, or home food businesses can apply",
+        "Business details and the nature of food activity should be clearly available",
+        "The category of registration or licence depends on turnover, scale, and food activity type",
+      ]);
+    }
+
+    if (haystack.includes("shop act") || haystack.includes("shop establishment")) {
+      return bulletList([
+        "A physical shop, office, or commercial establishment in the relevant state can apply",
+        "The proprietor or authorised representative should be available for the filing",
+        "Business address and establishment details should be ready",
+      ]);
+    }
+
+    if (haystack.includes("llp") || haystack.includes("company") || haystack.includes("dsc")) {
+      return bulletList([
+        "The applicant should be the authorised partner, director, owner, or signatory for the entity",
+        "The proposed entity details and KYC documents should be available",
+        "Compliance requirements vary by entity type and filing objective",
+      ]);
+    }
+  }
+
+  if (category === "CERTIFICATES") {
+    if (haystack.includes("income certificate")) {
+      return bulletList([
+        "The applicant should usually be a resident of the relevant state or local jurisdiction",
+        "Family income details and supporting proof should be available",
+        "The certificate is issued subject to the state authority's verification rules",
+      ]);
+    }
+
+    if (haystack.includes("caste certificate")) {
+      return bulletList([
+        "The applicant should belong to the caste or community recognised under the relevant state list",
+        "Residence and caste-related supporting proof should be available",
+        "Final eligibility depends on state-level verification by the issuing authority",
+      ]);
+    }
+
+    if (haystack.includes("resident certificate") || haystack.includes("domicile certificate")) {
+      return bulletList([
+        "The applicant should be a resident of the relevant state or local area",
+        "Residence proof should be available for the required period or address",
+        "The issuing authority may apply state-specific domicile or residence rules",
+      ]);
+    }
+
+    if (haystack.includes("ews certificate")) {
+      return bulletList([
+        "The applicant should belong to the economically weaker section under the relevant state or central rules",
+        "The applicant should not fall under the reserved-category criteria where EWS is not applicable",
+        "Income and asset limits should be within the prescribed threshold",
+      ]);
+    }
+
+    if (haystack.includes("legal heir certificate")) {
+      return bulletList([
+        "The applicant should be a legal heir or immediate family member of the deceased person",
+        "Death details and family relationship proof should be available",
+        "The local authority will verify heirship before issuance",
+      ]);
+    }
+
+    if (haystack.includes("birth certificate")) {
+      return bulletList([
+        "The applicant should be the person concerned, a parent, or a legal guardian",
+        "Birth details should be traceable through the relevant registration authority or local body",
+        "Supporting information such as date, place, and parent details should be available",
+      ]);
+    }
+  }
+
+  if (category === "GOVERNMENT_SCHEMES") {
+    if (haystack.includes("pm kisan")) {
+      return bulletList([
+        "The beneficiary should satisfy the scheme rules for eligible farmer families",
+        "Landholding and identity details should match the applicable records",
+        "Aadhaar and bank account details are usually needed for benefit transfer",
+      ]);
+    }
+
+    if (haystack.includes("pmsby")) {
+      return bulletList([
+        "The applicant should generally be between 18 and 70 years of age",
+        "A savings bank account with auto-debit support is usually required",
+        "The applicant should satisfy the insurer and scheme conditions at the time of enrolment",
+      ]);
+    }
+
+    if (haystack.includes("pmjjby")) {
+      return bulletList([
+        "The applicant should generally be between 18 and 50 years of age for enrolment",
+        "A savings bank account with auto-debit support is usually required",
+        "Continuity of cover depends on yearly renewal and scheme conditions",
+      ]);
+    }
+
+    if (haystack.includes("e shram") || haystack.includes("eshram")) {
+      return bulletList([
+        "The applicant should be an unorganised worker",
+        "The age should generally fall within the supported range, commonly 16 to 59 years",
+        "The applicant should not already be covered under excluded organised-sector conditions where not allowed",
+      ]);
+    }
+
+    return bulletList([
+      "Eligibility depends on the scheme's age, income, residence, occupation, or category rules",
+      "Aadhaar, bank account, and scheme-specific supporting details are commonly required",
+      "Final approval depends on the issuing department or scheme authority verification",
+    ]);
+  }
+
+  return null;
+}
+
+function serviceHasEligibilityCriteria(service: ServiceRecord | null) {
+  return Boolean(service && getEligibilityDetails(service));
+}
+
+function quickRepliesForStage(stage: ConversationStage, service: ServiceRecord | null = null) {
+  const replies = serviceHasEligibilityCriteria(service)
+    ? ["Apply now", "Eligibility", "Documents", "Process", "Fees"]
+    : ["Apply now", "Documents", "Process", "Fees"];
+
   if (stage === "SERVICE_IDENTIFIED" || stage === "ASK_USER_INTENT") {
-    return ["Apply now", "Documents", "Process", "Fees"];
+    return replies;
   }
 
   if (stage === "SHOW_DOCUMENTS" || stage === "SHOW_PROCESS" || stage === "SHOW_FEES") {
-    return ["Apply now", "Documents", "Process", "Fees"];
+    return replies;
   }
 
-  return ["Apply now"];
+  return serviceHasEligibilityCriteria(service) ? ["Eligibility", "Documents", "Process", "Fees"] : ["Apply now"];
+}
+
+function buildEligibilityReply(
+  language: ConversationState["language"],
+  service: ServiceRecord,
+  copy: CopyBlock
+) {
+  const serviceName = presentServiceName(service);
+  const details = getEligibilityDetails(service);
+
+  if (!details) {
+    if (language === "Hindi") {
+      return `${serviceName} के लिए अलग eligibility criteria आमतौर पर लागू नहीं होती। अगर आप चाहें तो मैं documents, process, fees या apply link बता सकता हूँ।`;
+    }
+
+    if (language === "Hinglish") {
+      return `${serviceName} ke liye separate eligibility criteria usually apply nahi hoti. Agar aap chaho to main documents, process, fees ya apply link bata sakta hoon.`;
+    }
+
+    if (language === "Telugu") {
+      return `${serviceName} కోసం ప్రత్యేక eligibility criteria సాధారణంగా ఉండదు. మీరు కోరుకుంటే నేను documents, process, fees లేదా apply link చెబుతాను.`;
+    }
+
+    return `There is usually no separate eligibility criteria for ${serviceName}. If you want, I can share the documents, process, fees, or apply link.`;
+  }
+
+  return `${copy.eligibilityLabel} for ${serviceName}:\n\n${details}\n\n${copy.askApply}`;
 }
 
 function buildServiceMatchText(service: ServiceRecord) {
@@ -1002,7 +1478,7 @@ async function resolveService(
 
   const detectedCategoryFromMessage = detectCategory(normalizedMessage);
   const followUpOnly =
-    ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
+    ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS", "ELIGIBILITY"].includes(detectedIntent) &&
     !hasExplicitServiceMention(normalizedMessage) &&
     detectedCategoryFromMessage === "GENERAL";
 
@@ -1019,7 +1495,7 @@ async function resolveService(
 
   if (
     currentService &&
-    ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
+    ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS", "ELIGIBILITY"].includes(detectedIntent) &&
     !hasExplicitServiceMention(normalizedMessage) &&
     detectedCategoryFromMessage === "GENERAL"
   ) {
@@ -1087,7 +1563,7 @@ async function resolveService(
       );
 
       const followUpIntentOnly =
-        ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
+        ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS", "ELIGIBILITY"].includes(detectedIntent) &&
         detectedCategoryFromMessage === "GENERAL";
 
       if (stillRefersToCurrent || followUpIntentOnly) {
@@ -1141,7 +1617,7 @@ export async function POST(req: NextRequest) {
     const category = detectCategory(normalizedMessage);
     const detectedIntent = resolveDetectedIntent(message, normalizedMessage);
     const isGenericFollowUp =
-      ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
+      ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS", "ELIGIBILITY"].includes(detectedIntent) &&
       !hasExplicitServiceMention(normalizedMessage) &&
       category === "GENERAL";
     const incomingConversation: ConversationState =
@@ -1152,6 +1628,10 @@ export async function POST(req: NextRequest) {
       language,
       currentService: body.currentService || incomingConversation.currentService || null,
     };
+    const hsrpContextActive = isHsrpContextActive(
+      conversation.currentService,
+      conversation.currentCategory
+    );
 
     if (isBareCategoryQuery(normalizedMessage, category, detectedIntent)) {
       const categoryServices = listServicesForCategory(services, category);
@@ -1199,7 +1679,7 @@ export async function POST(req: NextRequest) {
           currentIntent: conversation.currentIntent,
         },
         quickReplies: conversation.currentService
-          ? ["Documents", "Process", "Fees", "Apply now"]
+          ? quickRepliesForStage("ASK_USER_INTENT", conversation.currentService)
           : ["PAN Card", "Aadhaar", "Passport", "Driving License"],
       });
     }
@@ -1228,7 +1708,7 @@ export async function POST(req: NextRequest) {
           currentIntent: "GENERAL",
         },
         quickReplies: conversation.currentService
-          ? ["Documents", "Process", "Fees", "Apply now"]
+          ? quickRepliesForStage("ASK_USER_INTENT", conversation.currentService)
           : ["PAN Card", "Aadhaar", "Passport"],
       });
     }
@@ -1245,8 +1725,37 @@ export async function POST(req: NextRequest) {
           currentCategory: learnerService ? mapCategoryFromService(learnerService) : "DRIVING_LICENSE",
           currentService: learnerService,
         },
-        quickReplies: ["Documents", "Process", "Fees", "Apply now"],
+        quickReplies: quickRepliesForStage("ASK_USER_INTENT", learnerService),
       });
+    }
+
+    if (
+      isHsrpEligibilityQuestion(normalizedMessage) ||
+      (hsrpContextActive && isVehicleYearEligibilityFollowUp(normalizedMessage))
+    ) {
+      const hsrpService = findHsrpService(services);
+      const registrationYear = extractVehicleRegistrationYear(normalizedMessage);
+
+      if (registrationYear) {
+        const isEligibleForBooking = registrationYear < 2019;
+
+        return NextResponse.json({
+          reply: buildHsrpEligibilityReply(language, hsrpService, registrationYear),
+          service: hsrpService,
+          conversation: {
+            ...conversation,
+            stage: "ASK_USER_INTENT",
+            currentIntent: "GENERAL",
+            currentCategory: hsrpService ? mapCategoryFromService(hsrpService) : "HSRP",
+            currentService: hsrpService,
+          },
+          quickReplies: isEligibleForBooking
+            ? quickRepliesForStage("ASK_USER_INTENT", hsrpService)
+            : serviceHasEligibilityCriteria(hsrpService)
+              ? ["Eligibility", "Documents", "Process", "Fees"]
+              : ["Documents", "Process", "Fees"],
+        });
+      }
     }
 
     if (
@@ -1261,10 +1770,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         reply:
           language === "Hindi"
-            ? `${categoryName} के लिए कई services उपलब्ध हैं। कृपया पहले exact service चुनें, फिर मैं documents, process, fees या apply link बताऊंगा.\n\n${options.map((item) => `- ${item}`).join("\n")}`
+            ? `${categoryName} के लिए कई services उपलब्ध हैं। कृपया पहले exact service चुनें, फिर मैं eligibility, documents, process, fees या apply link बताऊंगा.\n\n${options.map((item) => `- ${item}`).join("\n")}`
             : language === "Telugu"
-              ? `${categoryName} కి చాలా services ఉన్నాయి. ముందు exact service ఎంచుకోండి, తర్వాత నేను documents, process, fees లేదా apply link చెబుతాను.\n\n${options.map((item) => `- ${item}`).join("\n")}`
-              : `${categoryName} has multiple services. Please choose the exact service first, and then I can help with documents, process, fees, or apply link.\n\n${options.map((item) => `- ${item}`).join("\n")}`,
+              ? `${categoryName} కి చాలా services ఉన్నాయి. ముందు exact service ఎంచుకోండి, తర్వాత నేను eligibility, documents, process, fees లేదా apply link చెబుతాను.\n\n${options.map((item) => `- ${item}`).join("\n")}`
+              : `${categoryName} has multiple services. Please choose the exact service first, and then I can help with eligibility, documents, process, fees, or apply link.\n\n${options.map((item) => `- ${item}`).join("\n")}`,
         conversation: {
           ...conversation,
         },
@@ -1341,7 +1850,7 @@ export async function POST(req: NextRequest) {
     if (
       !service &&
       conversation.currentCategory &&
-      ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent)
+      ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS", "ELIGIBILITY"].includes(detectedIntent)
     ) {
       const categoryServices = listServicesForCategory(services, conversation.currentCategory);
       const categoryName = categoryLabel(conversation.currentCategory) || "this category";
@@ -1350,10 +1859,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({
         reply:
           language === "Hindi"
-            ? `${categoryName} के लिए कई सेवाएं उपलब्ध हैं। कृपया पहले exact service चुनें, फिर मैं documents, process, fees या apply link बताऊंगा.\n\n${options.map((item) => `- ${item}`).join("\n")}`
+            ? `${categoryName} के लिए कई सेवाएं उपलब्ध हैं। कृपया पहले exact service चुनें, फिर मैं eligibility, documents, process, fees या apply link बताऊंगा.\n\n${options.map((item) => `- ${item}`).join("\n")}`
             : language === "Telugu"
-              ? `${categoryName} కి చాలా services ఉన్నాయి. ముందు exact service ఎంచుకోండి, తర్వాత నేను documents, process, fees లేదా apply link చెబుతాను.\n\n${options.map((item) => `- ${item}`).join("\n")}`
-              : `${categoryName} has multiple services. Please choose the exact service first, and then I can help with documents, process, fees, or apply link.\n\n${options.map((item) => `- ${item}`).join("\n")}`,
+              ? `${categoryName} కి చాలా services ఉన్నాయి. ముందు exact service ఎంచుకోండి, తర్వాత నేను eligibility, documents, process, fees లేదా apply link చెబుతాను.\n\n${options.map((item) => `- ${item}`).join("\n")}`
+              : `${categoryName} has multiple services. Please choose the exact service first, and then I can help with eligibility, documents, process, fees, or apply link.\n\n${options.map((item) => `- ${item}`).join("\n")}`,
         conversation: {
           ...conversation,
         },
@@ -1397,7 +1906,21 @@ export async function POST(req: NextRequest) {
                 : `${serviceName} is currently not active. If you want, I can suggest a related service.`,
         service,
         conversation: nextConversation,
-        quickReplies: ["Documents", "Process", "Fees"],
+        quickReplies: serviceHasEligibilityCriteria(service)
+          ? ["Eligibility", "Documents", "Process", "Fees"]
+          : ["Documents", "Process", "Fees"],
+      });
+    }
+
+    if (detectedIntent === "ELIGIBILITY") {
+      return NextResponse.json({
+        reply: buildEligibilityReply(language, service, copy),
+        service,
+        conversation: {
+          ...nextConversation,
+          stage: "ASK_USER_INTENT",
+        },
+        quickReplies: quickRepliesForStage("ASK_USER_INTENT", service),
       });
     }
 
@@ -1437,7 +1960,7 @@ export async function POST(req: NextRequest) {
         ),
         service,
         conversation: nextConversation,
-        quickReplies: quickRepliesForStage(nextStage),
+        quickReplies: quickRepliesForStage(nextStage, service),
       });
     }
 
@@ -1486,7 +2009,7 @@ export async function POST(req: NextRequest) {
         ),
         service,
         conversation: nextConversation,
-        quickReplies: quickRepliesForStage(nextStage),
+        quickReplies: quickRepliesForStage(nextStage, service),
       });
     }
 
@@ -1509,7 +2032,7 @@ export async function POST(req: NextRequest) {
         ),
         service,
         conversation: nextConversation,
-        quickReplies: quickRepliesForStage(nextStage),
+        quickReplies: quickRepliesForStage(nextStage, service),
       });
     }
 
@@ -1531,7 +2054,7 @@ export async function POST(req: NextRequest) {
           ...nextConversation,
           stage: "ASK_USER_INTENT",
         },
-        quickReplies: ["Apply now", "Documents", "Process", "Fees"],
+        quickReplies: quickRepliesForStage("ASK_USER_INTENT", service),
       });
     }
 
@@ -1555,7 +2078,9 @@ export async function POST(req: NextRequest) {
           ...nextConversation,
           stage: "APPLY_LINK",
         },
-        quickReplies: ["Documents", "Process", "Fees"],
+        quickReplies: serviceHasEligibilityCriteria(service)
+          ? ["Eligibility", "Documents", "Process", "Fees"]
+          : ["Documents", "Process", "Fees"],
       });
     }
 
@@ -1625,7 +2150,7 @@ export async function POST(req: NextRequest) {
         ...nextConversation,
         stage: "ASK_USER_INTENT",
       },
-      quickReplies: quickRepliesForStage("ASK_USER_INTENT"),
+      quickReplies: quickRepliesForStage("ASK_USER_INTENT", service),
     });
   } catch (error) {
     console.error("Chat route error:", error);

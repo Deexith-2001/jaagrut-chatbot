@@ -7,6 +7,7 @@ type ServiceKnowledge = {
   description?: string;
   documentsSummary?: string[];
   textFieldsSummary?: string[];
+  eligibilitySummary?: string[];
   processSteps?: string[];
   feesSummary?: string;
   timelineSummary?: string;
@@ -26,14 +27,19 @@ const SERVICE_KNOWLEDGE: ServiceKnowledge[] = [
       "number plate booking",
     ],
     description:
-      "Book your HSRP number plate through Jaagruk Bharat with guided support for booking, fitment, and colour-coded sticker requirements.",
+      "Book your HSRP number plate through Jaagruk Bharat with guided support for eligible pre-April 2019 vehicle bookings, fitment, and colour-coded sticker requirements.",
     documentsSummary: [
-      "RC photo or registration certificate details",
+      "RC photo or registration certificate details showing the registration date",
       "Basic vehicle details needed during booking",
     ],
     textFieldsSummary: ["Whatsapp Number"],
+    eligibilitySummary: [
+      "This HSRP retrofit booking flow is mainly for vehicles registered before April 1, 2019",
+      "Vehicle details should match the RC or registration certificate",
+      "Vehicles registered on or after April 1, 2019 usually already have HSRP fitted by the dealership",
+    ],
     processSteps: [
-      "Share your vehicle details and choose your state on Jaagruk Bharat.",
+      "Confirm that the vehicle was registered before April 1, 2019 and choose your state on Jaagruk Bharat.",
       "Complete the online booking and payment. Aadhaar, PAN, bank details, full chassis number, and full engine number are not required.",
       "Your HSRP plate booking moves forward with snap-lock fitment and colour-coded sticker support. Delivery or next-step support usually happens within 3 to 5 working days.",
     ],
@@ -50,6 +56,7 @@ const SERVICE_KNOWLEDGE: ServiceKnowledge[] = [
     ],
     comparisonPoints: [
       "Jaagruk Bharat handles booking guidance, fitment support, and colour-coded sticker support in one flow",
+      "HSRP booking through this flow is mainly for vehicles registered before April 1, 2019",
       "No Aadhaar, PAN, or bank details are needed for the booking",
       "Refund support is available if the booking cannot be completed",
     ],
@@ -79,6 +86,11 @@ const SERVICE_KNOWLEDGE: ServiceKnowledge[] = [
       "Aadhaar linked mobile number",
       "PAN number when applicable",
       "GST number if already available",
+    ],
+    eligibilitySummary: [
+      "Micro, small, and medium businesses can apply under the Udyam registration framework",
+      "The applicant should be the proprietor or an authorised partner, director, or signatory",
+      "Aadhaar is required, and PAN is mandatory for entities like Private Limited, LLP, and Co-operative organisations",
     ],
     processSteps: [
       "Share your Aadhaar-linked details and business information with Jaagruk Bharat.",
@@ -127,6 +139,7 @@ export function applyServiceKnowledge(service: ServiceRecord): ServiceRecord {
     description: knowledge.description || service.description,
     documentsSummary: knowledge.documentsSummary || service.documentsSummary,
     textFieldsSummary: knowledge.textFieldsSummary || service.textFieldsSummary,
+    eligibilitySummary: knowledge.eligibilitySummary || service.eligibilitySummary,
     processSteps: knowledge.processSteps || service.processSteps,
     process:
       knowledge.processSteps?.length ? knowledge.processSteps.join("\n") : service.process,
