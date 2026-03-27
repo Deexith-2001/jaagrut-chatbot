@@ -46,6 +46,11 @@ export type ServiceRecord = {
   textFieldsSummary?: string[];
   feesSummary?: string;
   link?: string;
+  redirectionLink?: string;
+  urlSheetUrl?: string;
+  canonicalUrl?: string;
+  deliverableUrl?: string;
+  ctaDescription?: string;
   bodyUrl?: string;
   faqUrl?: string;
   aliases?: string[];
@@ -92,23 +97,23 @@ const categoryKeywords: Array<{
   },
   {
     category: "DRIVING_LICENSE",
-    keywords: ["driving license", "driving licence", "license number", "licence number", "learner", "learners", "dl"],
+    keywords: ["driving license", "driving licence", "learner", "learners", "permanent driving", "international driving", "duplicate driving", "dl address", "driving licence"],
   },
   {
     category: "HSRP",
     keywords: ["hsrp", "number plate", "high security number plate", "registration plate"],
   },
   {
-    category: "CERTIFICATES",
-    keywords: ["certificate", "income certificate", "caste", "birth certificate"],
-  },
-  {
     category: "GOVERNMENT_SCHEMES",
-    keywords: ["scheme", "yojana", "subsidy", "benefit"],
+    keywords: ["scheme", "yojana", "subsidy", "benefit", "farmer", "agriculture", "kisan", "pm kisan", "crop", "insurance", "support", "financial help", "government support"],
   },
   {
     category: "BUSINESS_REGISTRATION",
     keywords: ["gst", "gstin", "udyam", "msme", "msmes", "enterprise", "enterprises", "company", "firm", "business", "fssai", "food license", "food licence", "shop act", "llp", "dsc"],
+  },
+  {
+    category: "CERTIFICATES",
+    keywords: ["income certificate", "caste certificate", "resident certificate", "domicile certificate", "ews certificate", "legal heir certificate", "birth certificate", "certificate"],
   },
   {
     category: "TRAVEL_DARSHAN",
@@ -259,6 +264,12 @@ function serviceAliases(service: ServiceRecord) {
   if (lowerTitle.includes("pan aadhaar linking")) aliases.add("pan aadhaar link");
   if (lowerTitle.includes("aadhaar pvc")) aliases.add("aadhaar pvc card");
   if (lowerTitle.includes("voter aadhaar")) aliases.add("voter aadhaar link");
+  if (lowerTitle.includes("get your voter card online")) {
+    aliases.add("new voter id");
+    aliases.add("new voter card");
+    aliases.add("apply for new voter card");
+  }
+  if (lowerTitle.includes("international driving permit")) aliases.add("international driving license");
   if (lowerTitle.includes("uan")) aliases.add("uan activation");
   if (lowerTitle.includes("gst registration")) aliases.add("gst number");
   if (lowerTitle.includes("resident certificate haryana")) aliases.add("haryana domicile certificate");
@@ -294,24 +305,49 @@ export function findExactServiceMatch(
     }
   }
 
-  return (
-    services.find((service) => {
-      const candidates = [
-        service.title,
-        service.displayName || "",
-        ...(service.aliases || []),
-      ]
-        .map((value) => normalizeMatchText(value))
-        .filter(Boolean);
+  let bestService: ServiceRecord | null = null;
+  let bestScore = 0;
 
-      return candidates.some(
-        (candidate) =>
-          candidate === normalizedMessage ||
-          normalizedMessage.includes(candidate) ||
-          candidate.includes(normalizedMessage)
-      );
-    }) || null
-  );
+  for (const service of services) {
+    const candidates = [
+      service.title,
+      service.displayName || "",
+      ...(service.aliases || []),
+    ]
+      .map((value) => normalizeMatchText(value))
+      .filter(Boolean);
+
+    let score = 0;
+
+    for (const candidate of candidates) {
+      const wordCount = candidate.split(" ").filter(Boolean).length;
+
+      if (candidate === normalizedMessage) {
+        score = Math.max(score, 100);
+        continue;
+      }
+
+      if (wordCount >= 2 && normalizedMessage.includes(candidate)) {
+        score = Math.max(score, 70 + wordCount);
+        continue;
+      }
+
+      if (
+        normalizedMessage.split(" ").length >= 2 &&
+        wordCount >= 2 &&
+        candidate.includes(normalizedMessage)
+      ) {
+        score = Math.max(score, 60 + normalizedMessage.split(" ").length);
+      }
+    }
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestService = service;
+    }
+  }
+
+  return bestScore >= 60 ? bestService : null;
 }
 
 export function findForcedServiceMatch(
@@ -347,6 +383,169 @@ export function findForcedServiceMatch(
             haystack.includes("registration") ||
             haystack.includes("new"))
         );
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("pan") && normalizedMessage.includes("new")) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (
+          haystack.includes("pan") &&
+          (haystack.includes("new") || haystack.includes("application"))
+        );
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("pan") && normalizedMessage.includes("update")) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (
+          haystack.includes("pan") &&
+          (haystack.includes("update") || haystack.includes("correction"))
+        );
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("aadhaar") && normalizedMessage.includes("update")) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (
+          haystack.includes("aadhaar") &&
+          (haystack.includes("update") || haystack.includes("address"))
+        );
+      }) || null
+    );
+  }
+
+  if (
+    (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) &&
+    normalizedMessage.includes("pvc")
+  ) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("pvc");
+      }) || null
+    );
+  }
+
+  if (
+    (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) &&
+    normalizedMessage.includes("pan") &&
+    normalizedMessage.includes("link")
+  ) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (
+          (haystack.includes("aadhaar") || haystack.includes("aadhar")) &&
+          haystack.includes("pan") &&
+          haystack.includes("link")
+        );
+      }) || null
+    );
+  }
+
+  if (
+    normalizedMessage.includes("voter") &&
+    (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) &&
+    normalizedMessage.includes("link")
+  ) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (
+          haystack.includes("voter") &&
+          (haystack.includes("aadhaar") || haystack.includes("aadhar")) &&
+          haystack.includes("link")
+        );
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("gst") && normalizedMessage.includes("registration")) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return haystack.includes("gst") && haystack.includes("registration") && !haystack.includes("verify");
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("caste") && normalizedMessage.includes("certificate")) {
+    if (normalizedMessage.includes("haryana")) {
+      return (
+        services.find((service) => {
+          const haystack = buildServiceKeywords(service);
+          return haystack.includes("caste") && haystack.includes("haryana");
+        }) || null
+      );
+    }
+
+    if (normalizedMessage.includes("maharashtra") || /\bmh\b/.test(normalizedMessage)) {
+      return (
+        services.find((service) => {
+          const haystack = buildServiceKeywords(service);
+          return haystack.includes("caste") && (haystack.includes("maharashtra") || /\bmh\b/.test(haystack));
+        }) || null
+      );
+    }
+  }
+
+  if (
+    (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) &&
+    normalizedMessage.includes("npci")
+  ) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("npci");
+      }) || null
+    );
+  }
+
+  if (
+    (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) &&
+    normalizedMessage.includes("pan") &&
+    normalizedMessage.includes("link")
+  ) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("pan") && haystack.includes("link");
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("voter") && (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) && normalizedMessage.includes("link")) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return haystack.includes("voter") && (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("link");
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("international") && (normalizedMessage.includes("driving") || normalizedMessage.includes("license") || normalizedMessage.includes("licence"))) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return haystack.includes("international") && (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence"));
+      }) || null
+    );
+  }
+
+  if (normalizedMessage.includes("permanent") && (normalizedMessage.includes("driving") || normalizedMessage.includes("license") || normalizedMessage.includes("licence"))) {
+    return (
+      services.find((service) => {
+        const haystack = buildServiceKeywords(service);
+        return haystack.includes("permanent") && (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence"));
       }) || null
     );
   }
@@ -406,7 +605,7 @@ export function findBestServiceMatch(
     const explicitKeywords = ["pan", "aadhaar", "aadhar", "uidai", "passport", "voter", "epic", "driving license", "driving licence", "license number", "licence number", "dl", "hsrp", "number plate", "certificate", "income certificate", "caste", "birth certificate", "scheme", "yojana", "gst", "gstin", "udyam", "msme", "msmes", "enterprise", "enterprises", "company", "firm", "business", "fssai", "food license", "food licence", "shop act", "llp", "dsc"];
     const serviceText = buildServiceKeywords(service);
     for (const keyword of explicitKeywords) {
-      if (messageTokens.includes(keyword) && serviceText.includes(keyword)) {
+      if (messageText.includes(keyword) && serviceText.includes(keyword)) {
         score += 20;
       }
     }
@@ -535,6 +734,15 @@ export function mapServiceFromCategoryAndIntent(
   return null;
 }
 
+const DEFAULT_SUPPORT_URL = "https://www.jaagrukbharat.com/support";
+
 export function extractApplyLink(service: ServiceRecord | null) {
-  return service?.link || "https://www.jaagrukbharat.com";
+  if (!service) return DEFAULT_SUPPORT_URL;
+  return (
+    service.urlSheetUrl ||
+    service.canonicalUrl ||
+    service.redirectionLink ||
+    service.link ||
+    DEFAULT_SUPPORT_URL
+  );
 }

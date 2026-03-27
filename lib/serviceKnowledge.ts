@@ -107,6 +107,10 @@ function serviceText(service: ServiceRecord) {
   return `${service.title} ${service.displayName || ""} ${(service.aliases || []).join(" ")}`.toLowerCase();
 }
 
+function isGenericFeesSummary(feesSummary?: string) {
+  return Boolean(feesSummary && feesSummary.includes("can vary based on the selected service flow"));
+}
+
 export function applyServiceKnowledge(service: ServiceRecord): ServiceRecord {
   const haystack = serviceText(service);
   const knowledge = SERVICE_KNOWLEDGE.find((item) =>
@@ -126,7 +130,10 @@ export function applyServiceKnowledge(service: ServiceRecord): ServiceRecord {
     processSteps: knowledge.processSteps || service.processSteps,
     process:
       knowledge.processSteps?.length ? knowledge.processSteps.join("\n") : service.process,
-    feesSummary: knowledge.feesSummary || service.feesSummary,
+    feesSummary:
+      service.feesSummary && !isGenericFeesSummary(service.feesSummary)
+        ? service.feesSummary
+        : knowledge.feesSummary || service.feesSummary,
     timelineSummary: knowledge.timelineSummary || service.timelineSummary,
     trustPoints: knowledge.trustPoints || service.trustPoints,
     comparisonPoints: knowledge.comparisonPoints || service.comparisonPoints,

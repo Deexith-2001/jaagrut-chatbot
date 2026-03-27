@@ -1,6 +1,13 @@
 export function detectCompanyIntent(text: string) {
   text = text.toLowerCase();
 
+  const referencesCompany =
+    text.includes("jaagruk") ||
+    text.includes("your portal") ||
+    text.includes("your platform") ||
+    text.includes("you") ||
+    text.includes("your service");
+
   if (text.includes("about jaagruk") || text.includes("what is jaagruk"))
     return "ABOUT";
 
@@ -9,7 +16,8 @@ export function detectCompanyIntent(text: string) {
     text.includes("safe") ||
     text.includes("genuine") ||
     text.includes("reliable") ||
-    text.includes("why should i trust")
+    text.includes("why should i trust") ||
+    (referencesCompany && (text.includes("why should i consider") || text.includes("why should we trust")))
   )
     return "TRUST";
 
@@ -20,7 +28,12 @@ export function detectCompanyIntent(text: string) {
     text.includes("difference") ||
     text.includes("why jaagruk") ||
     text.includes("why should i choose") ||
+    text.includes("why should i consider") ||
+    text.includes("why should i consider you") ||
+    text.includes("why should i consider your") ||
     text.includes("why choose") ||
+    text.includes("why your portal") ||
+    text.includes("why your platform") ||
     text.includes("why pay") ||
     text.includes("why 299") ||
     text.includes("why rs") ||

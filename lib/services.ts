@@ -1,12 +1,17 @@
 import Papa from "papaparse";
 import { ServiceRecord } from "./chatbot";
+import { applyServiceKnowledge } from "./serviceKnowledge";
 
 const SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1C8xZB5OZXhk4R3xJc4yShgLpJsBZkp6s0HRkmIGQj6U/export?format=csv&gid=599383802";
+const URL_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/1pG2JDvFZ4IxgTYLqMb8ErwAmmM_vl5Rn4WUex-ZDDsM/export?format=csv&gid=502220211";
 const DOCUMENTS_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1-oJ1lDO8_yuRTN5-2JEGPVad56wnGh5mRY0Vx7XG8Sc/export?format=csv";
 const SERVICES_NAMES_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1-oJ1lDO8_yuRTN5-2JEGPVad56wnGh5mRY0Vx7XG8Sc/gviz/tq?tqx=out:csv&sheet=services";
+const FEES_SHEET_URL =
+  "https://docs.google.com/spreadsheets/d/1d82GmqYHJOC3pLIyO8H4SKYYkkZ2gdQq/export?format=csv&gid=385952581";
 
 let servicesCache: ServiceRecord[] = [];
 
@@ -20,6 +25,41 @@ type ServiceNamesRow = {
   serviceName: string;
   category?: string;
 };
+
+type UrlSheetRow = {
+  serviceName: string;
+  webUrl: string;
+};
+
+type FeesSheetRow = {
+  serviceName: string;
+  ourCharges: string;
+  govtCharges: string;
+};
+
+function parseUrlSheetRow(row: Record<string, unknown>): UrlSheetRow | null {
+  const serviceName = getField(row, "service name") || getField(row, "SERVICE NAME");
+  const webUrl =
+    getField(row, "deliverable") ||
+    getField(row, "Deliverable") ||
+    getField(row, "web url") ||
+    getField(row, "Web URL");
+  if (!serviceName || !webUrl) return null;
+  return { serviceName, webUrl };
+}
+
+function parseFeesSheetRow(row: Record<string, unknown>): FeesSheetRow | null {
+  const serviceName = getField(row, "service name") || getField(row, "SERVICE NAME");
+  const ourCharges = getField(row, "our charges") || getField(row, "OUR CHARGES");
+  const govtCharges =
+    getField(row, "govt/op charges") ||
+    getField(row, "GOVT/OP CHARGES") ||
+    getField(row, "govt charges");
+
+  if (!serviceName) return null;
+
+  return { serviceName, ourCharges, govtCharges };
+}
 
 function normalizeValue(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
@@ -103,9 +143,63 @@ function splitCommaList(text: string) {
 
 function cleanServiceLookupName(text: string) {
   return normalizeMatchText(text)
-    .replace(/\b(service|application|online|apply|registration|process|card)\b/g, " ")
+    .replace(/\b(service|application|online|apply|registration|process|card|click|here|get|your|today|now|instantly|complete|number|with|the|for|and)\b/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function findUrlSheetMatch(service: ServiceRecord, urlRows: UrlSheetRow[]) {
+  const coreVariants = buildLookupVariants(service.title, service.displayName || "");
+  const aliasVariants = buildLookupVariants(...(service.aliases || []));
+  const coreTokens = new Set(
+    cleanServiceLookupName(`${service.title} ${service.displayName || ""}`)
+      .split(" ")
+      .filter((token) => token.length > 2)
+  );
+
+  let bestRow: UrlSheetRow | null = null;
+  let bestScore = 0;
+  let bestOverlap = 0;
+
+  for (const row of urlRows) {
+    const rowVariants = buildLookupVariants(row.serviceName);
+    const rowTokens = cleanServiceLookupName(row.serviceName)
+      .split(" ")
+      .filter((token) => token.length > 2);
+
+    let score = 0;
+
+    for (const rowVariant of rowVariants) {
+      if (!rowVariant) continue;
+
+      if (coreVariants.includes(rowVariant)) {
+        score = Math.max(score, 100);
+        continue;
+      }
+
+      if (coreVariants.some((variant) => variant && (variant.includes(rowVariant) || rowVariant.includes(variant)))) {
+        score = Math.max(score, 80);
+        continue;
+      }
+
+      if (aliasVariants.includes(rowVariant)) {
+        score = Math.max(score, 50);
+      }
+    }
+
+    const overlap = rowTokens.filter((token) => coreTokens.has(token)).length;
+    score += overlap * 5;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestOverlap = overlap;
+      bestRow = row;
+    }
+  }
+
+  if (!bestRow) return null;
+  if (bestScore >= 50) return bestRow.webUrl;
+  return bestScore >= 20 && bestOverlap >= 2 ? bestRow.webUrl : null;
 }
 
 function buildLookupVariants(...values: string[]) {
@@ -121,14 +215,6 @@ function buildLookupVariants(...values: string[]) {
 
   const combined = [...variants].join(" ");
 
-  if (combined.includes("pan")) {
-    variants.add("pan");
-    variants.add("pan card");
-  }
-  if (combined.includes("aadhaar") || combined.includes("aadhar")) {
-    variants.add("aadhaar");
-    variants.add("aadhar");
-  }
   if (combined.includes("abha")) variants.add("abha");
   if (combined.includes("apaar")) variants.add("apaar id");
   if (combined.includes("udid")) variants.add("udid");
@@ -142,6 +228,15 @@ function buildLookupVariants(...values: string[]) {
   if (combined.includes("e shram") || combined.includes("eshram")) variants.add("e shram");
   if (combined.includes("vehicle rc aadhaar linking")) variants.add("rc aadhaar number link");
   if (combined.includes("driving license aadhaar link")) variants.add("dl aadhaar link");
+  if (combined.includes("pan aadhaar linking")) variants.add("pan aadhaar linking");
+  if (combined.includes("aadhaar pvc")) variants.add("aadhaar pvc card");
+  if (combined.includes("get your voter card")) {
+    variants.add("new voter id");
+    variants.add("new voter card");
+    variants.add("apply for new voter card");
+  }
+  if (combined.includes("voter aadhaar")) variants.add("voter aadhaar linking");
+  if (combined.includes("gst registration")) variants.add("gst registration");
   if (combined.includes("new passport application")) variants.add("passport application");
   if (combined.includes("passport renewal")) variants.add("passport renewal");
   if (combined.includes("pan card correction")) variants.add("pan correction");
@@ -247,14 +342,66 @@ function matchDocumentsRow(service: ServiceRecord, documentsRows: DocumentsSheet
     }
   }
 
-  return bestScore >= 6 ? bestRow : null;
+  // Lower the match threshold so document KB entries are picked up more often for fuzzy titles.
+  return bestScore >= 3 ? bestRow : null;
 }
 
 function matchServiceNamesRows(service: ServiceRecord, serviceRows: ServiceNamesRow[]) {
+  const coreVariants = buildLookupVariants(service.title, service.displayName || "");
+  const coreTokens = new Set(
+    cleanServiceLookupName(`${service.title} ${service.displayName || ""}`)
+      .split(" ")
+      .filter((token) => token.length > 2)
+  );
+
   let bestRow: ServiceNamesRow | null = null;
   let bestScore = 0;
+  let bestOverlap = 0;
 
   for (const row of serviceRows) {
+    const rowVariants = buildLookupVariants(row.serviceName);
+    const rowTokens = cleanServiceLookupName(row.serviceName)
+      .split(" ")
+      .filter((token) => token.length > 2);
+
+    let score = 0;
+
+    for (const rowVariant of rowVariants) {
+      if (!rowVariant) continue;
+
+      if (coreVariants.includes(rowVariant)) {
+        score = Math.max(score, 100);
+        continue;
+      }
+
+      if (
+        rowVariant.length > 6 &&
+        coreVariants.some((variant) => variant && (variant.includes(rowVariant) || rowVariant.includes(variant)))
+      ) {
+        score = Math.max(score, 80);
+      }
+    }
+
+    const overlap = rowTokens.filter((token) => coreTokens.has(token)).length;
+    score += overlap * 5;
+
+    if (score > bestScore) {
+      bestScore = score;
+      bestOverlap = overlap;
+      bestRow = row;
+    }
+  }
+
+  if (!bestRow) return null;
+  if (bestScore >= 50) return bestRow;
+  return bestScore >= 20 && bestOverlap >= 2 ? bestRow : null;
+}
+
+function matchFeesRow(service: ServiceRecord, feesRows: FeesSheetRow[]) {
+  let bestRow: FeesSheetRow | null = null;
+  let bestScore = 0;
+
+  for (const row of feesRows) {
     const score = scoreDocumentMatch(service, {
       serviceName: row.serviceName,
       documents: [],
@@ -283,7 +430,12 @@ function buildProcessSteps(row: Record<string, unknown>) {
   return steps;
 }
 
-function buildAliases(row: Record<string, unknown>, displayName: string) {
+function buildAliases(
+  row: Record<string, unknown>,
+  displayName: string,
+  ctaName?: string,
+  ctaDescription?: string
+) {
   const aliases = new Set<string>();
   const candidateFields = [
     "title",
@@ -295,6 +447,14 @@ function buildAliases(row: Record<string, unknown>, displayName: string) {
   ];
 
   aliases.add(displayName);
+  if (ctaName) {
+    aliases.add(ctaName);
+    aliases.add(ctaName.toLowerCase());
+  }
+  if (ctaDescription) {
+    aliases.add(ctaDescription);
+    aliases.add(ctaDescription.toLowerCase());
+  }
 
   for (const field of candidateFields) {
     const value = getField(row, field);
@@ -402,12 +562,47 @@ function inferFeesSummary(displayName: string) {
   return `Fees for ${displayName} can vary based on the selected service flow. Once the application starts, the exact Jaagruk Bharat fee details are shared clearly.`;
 }
 
+function formatFeesSummary(displayName: string, feesRow: FeesSheetRow | null) {
+  if (!feesRow) {
+    return inferFeesSummary(displayName);
+  }
+
+  const parts: string[] = [];
+
+  if (feesRow.ourCharges) {
+    parts.push(`Jaagruk Bharat service fee is Rs ${feesRow.ourCharges}`);
+  }
+
+  if (feesRow.govtCharges) {
+    parts.push(`Government or operator charges are Rs ${feesRow.govtCharges}`);
+  }
+
+  return parts.length > 0 ? `${parts.join(". ")}.` : inferFeesSummary(displayName);
+}
+
 function buildServiceRecord(
   row: Record<string, unknown>,
   documentsRows: DocumentsSheetRow[],
-  serviceNamesRows: ServiceNamesRow[]
+  serviceNamesRows: ServiceNamesRow[],
+  feesRows: FeesSheetRow[]
 ): ServiceRecord {
+  const ctaName =
+    getField(row, "ctaname") ||
+    getField(row, "ctaName") ||
+    getField(row, "cta name") ||
+    getField(row, "title");
+  const ctaDescription =
+    getField(row, "ctadescriptiontext") ||
+    getField(row, "ctaDescriptionText") ||
+    getField(row, "cta description text") ||
+    getField(row, "description");
   const canonicalUrl = getField(row, "canonicalurl") || getField(row, "canonical");
+  const deliverableUrl = getField(row, "deliverable") || getField(row, "deliverables");
+  const redirectionLink =
+    getField(row, "redirectionlink") ||
+    getField(row, "redirection link") ||
+    getField(row, "redirect link") ||
+    getField(row, "redirecturl");
   const title = getField(row, "title") || getField(row, "displaytitle") || getField(row, "urltitle");
   const displayName = cleanDisplayName(
     getField(row, "urltitle"),
@@ -422,22 +617,27 @@ function buildServiceRecord(
   const baseRecord: ServiceRecord = {
     id: getField(row, "id") || slugify(canonicalUrl || displayName || title),
     title,
-    displayName,
+    displayName: ctaName || displayName,
     description: getField(row, "description"),
     category,
     process: processSteps.join("\n"),
     processSteps,
     documentsSummary: inferDocumentsSummary(displayName, category),
     feesSummary: inferFeesSummary(displayName),
-    link: canonicalUrl,
+    link: deliverableUrl || canonicalUrl,
+    redirectionLink: redirectionLink || undefined,
+    canonicalUrl: canonicalUrl || undefined,
+    deliverableUrl: deliverableUrl || undefined,
+    ctaDescription: ctaDescription || undefined,
     bodyUrl: getField(row, "bodyurl"),
     faqUrl: getField(row, "faqbody"),
-    aliases: buildAliases(row, displayName),
+    aliases: buildAliases(row, displayName, ctaName, ctaDescription),
     status: getField(row, "servicestatus") || "active",
     isActive: (getField(row, "servicestatus") || "active").toLowerCase() === "active",
   };
   const matchedDocuments = matchDocumentsRow(baseRecord, documentsRows);
   const matchedServiceName = matchServiceNamesRows(baseRecord, serviceNamesRows);
+  const matchedFees = matchFeesRow(baseRecord, feesRows);
   const mergedAliases = new Set(baseRecord.aliases || []);
   if (matchedServiceName?.serviceName) {
     mergedAliases.add(matchedServiceName.serviceName);
@@ -451,6 +651,7 @@ function buildServiceRecord(
       matchedDocuments?.documents.length
         ? matchedDocuments.documents
         : baseRecord.documentsSummary,
+    feesSummary: formatFeesSummary(displayName, matchedFees),
     textFieldsSummary: matchedDocuments?.textFields.length
       ? matchedDocuments.textFields
       : [],
@@ -461,15 +662,19 @@ export async function getServices() {
   try {
     if (servicesCache.length > 0) return servicesCache;
 
-    const [servicesRes, documentsRes, serviceNamesRes] = await Promise.all([
+    const [servicesRes, documentsRes, serviceNamesRes, urlSheetRes, feesRes] = await Promise.all([
       fetch(SHEET_URL, { cache: "no-store" }),
       fetch(DOCUMENTS_SHEET_URL, { cache: "no-store" }),
       fetch(SERVICES_NAMES_SHEET_URL, { cache: "no-store" }),
+      fetch(URL_SHEET_URL, { cache: "no-store" }),
+      fetch(FEES_SHEET_URL, { cache: "no-store" }),
     ]);
-    const [servicesCsv, documentsCsv, serviceNamesCsv] = await Promise.all([
+    const [servicesCsv, documentsCsv, serviceNamesCsv, urlSheetCsv, feesCsv] = await Promise.all([
       servicesRes.text(),
       documentsRes.text(),
       serviceNamesRes.text(),
+      urlSheetRes.text(),
+      feesRes.text(),
     ]);
     const parsed = Papa.parse<Record<string, unknown>>(servicesCsv, { header: true });
     const parsedDocuments = Papa.parse<Record<string, unknown>>(documentsCsv, {
@@ -485,8 +690,38 @@ export async function getServices() {
       .map((row) => parseServiceNamesRow(row))
       .filter((row): row is ServiceNamesRow => Boolean(row));
 
+    const parsedUrlSheet = Papa.parse<Record<string, unknown>>(urlSheetCsv, {
+      header: true,
+    });
+    const urlSheetRows = parsedUrlSheet.data
+      .map((row) => parseUrlSheetRow(row))
+      .filter((row): row is UrlSheetRow => Boolean(row));
+    const parsedFees = Papa.parse<Record<string, unknown>>(feesCsv, {
+      header: true,
+    });
+    const feesRows = parsedFees.data
+      .map((row) => parseFeesSheetRow(row))
+      .filter((row): row is FeesSheetRow => Boolean(row));
+
     servicesCache = parsed.data
-      .map((row) => buildServiceRecord(row, documentsRows, serviceNamesRows))
+      .map((row) => buildServiceRecord(row, documentsRows, serviceNamesRows, feesRows))
+      .map((service) => {
+        const urlMatch = findUrlSheetMatch(service, urlSheetRows);
+        if (urlMatch) {
+          service.urlSheetUrl = urlMatch;
+        }
+
+        // Prefer the curated link sheet first. If no curated match exists,
+        // fall back to the canonical service URL from the main services sheet.
+        service.link =
+          service.urlSheetUrl ||
+          service.canonicalUrl ||
+          service.redirectionLink ||
+          service.deliverableUrl ||
+          service.link;
+
+        return applyServiceKnowledge(service);
+      })
       .filter((service) => service.title);
 
     return servicesCache;
@@ -494,4 +729,53 @@ export async function getServices() {
     console.error("Sheet error:", err);
     return [];
   }
+}
+
+export async function getRedirectUrl(userQuery: string) {
+  const fallbackSupportUrl = "https://www.jaagrukbharat.com/support";
+  if (!userQuery || !userQuery.trim()) return fallbackSupportUrl;
+
+  const services = await getServices();
+  const normalizedQuery = normalizeMatchText(userQuery);
+
+  const genericActionTokens = normalizedQuery
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (
+    genericActionTokens.length <= 3 &&
+    genericActionTokens.some((token) =>
+      ["apply", "documents", "process", "fees", "status", "track"].includes(token)
+    )
+  ) {
+    return fallbackSupportUrl;
+  }
+
+  const service =
+    services.find((s) => normalizeMatchText(s.title) === normalizedQuery) ||
+    services.find((s) => normalizeMatchText(s.displayName || "") === normalizedQuery) ||
+    services.find((s) => (s.aliases || []).some((alias) => normalizeMatchText(alias) === normalizedQuery)) ||
+    services.find((s) => normalizeMatchText(s.title).includes(normalizedQuery)) ||
+    services.find((s) => normalizeMatchText(s.displayName || "").includes(normalizedQuery)) ||
+    services.find((s) => (s.aliases || []).some((alias) => normalizeMatchText(alias).includes(normalizedQuery)));
+
+  if (service) {
+    return (
+      service.urlSheetUrl ||
+      service.canonicalUrl ||
+      service.redirectionLink ||
+      service.link ||
+      fallbackSupportUrl
+    );
+  }
+
+  // If service can't be matched exactly from CTA/URL lists, try canonical match from still present services list.
+  const canonicalMatch = services.find((s) =>
+    normalizeMatchText(s.canonicalUrl || "").includes(normalizedQuery)
+  );
+  if (canonicalMatch && canonicalMatch.canonicalUrl) {
+    return canonicalMatch.canonicalUrl;
+  }
+
+  return fallbackSupportUrl;
 }

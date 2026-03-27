@@ -42,7 +42,14 @@ function cleanServiceName(title: string) {
     .replace(/new/gi, "")
     .replace(/update/gi, "")
     .replace(/renewal/gi, "")
+    .replace(/click here/gi, "")
+    .replace(/online today/gi, "")
+    .replace(/do it now/gi, "")
+    .replace(/ready to/gi, "")
+    .replace(/apply online for/gi, "")
+    .replace(/need to get your/gi, "")
     .replace(/\breal\b/gi, "")
+    .replace(/[!?]+/g, "")
     .replace(/\s*[-:]+\s*$/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -50,7 +57,14 @@ function cleanServiceName(title: string) {
 
 function cleanDisplayLabel(title: string) {
   return (title || "")
+    .replace(/click here/gi, "")
+    .replace(/online today/gi, "")
+    .replace(/do it now/gi, "")
+    .replace(/ready to/gi, "")
+    .replace(/apply online for/gi, "")
+    .replace(/need to get your/gi, "")
     .replace(/\breal\b/gi, "")
+    .replace(/[!?]+/g, "")
     .replace(/\s*[-:]+\s*$/g, "")
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -77,11 +91,95 @@ function categoryLabel(category: ConversationState["currentCategory"]) {
 function presentServiceName(service: ServiceRecord) {
   const fullText = `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
 
+  if (fullText.includes("voter") && (fullText.includes("aadhaar") || fullText.includes("aadhar")) && /link/.test(fullText)) {
+    return "Voter Aadhaar Linking";
+  }
+
+  if (fullText.includes("vehicle") && (fullText.includes("aadhaar") || fullText.includes("aadhar")) && /link/.test(fullText)) {
+    return "Vehicle RC Aadhaar Linking";
+  }
+
+  if ((fullText.includes("driving") || fullText.includes("dl")) && (fullText.includes("aadhaar") || fullText.includes("aadhar")) && /link/.test(fullText)) {
+    return "Driving License Aadhaar Link";
+  }
+
+  if ((fullText.includes("aadhaar") || fullText.includes("aadhar")) && fullText.includes("pan") && /link/.test(fullText)) {
+    return "Aadhaar PAN Link";
+  }
+
+  if ((fullText.includes("aadhaar") || fullText.includes("aadhar")) && fullText.includes("npci")) {
+    return "Aadhaar NPCI Link";
+  }
+
+  if ((fullText.includes("aadhaar") || fullText.includes("aadhar")) && fullText.includes("pvc")) {
+    return "Aadhaar PVC Card";
+  }
+
   if (fullText.includes("fssai")) {
     if (/\brenew|renewal\b/.test(fullText)) {
       return "FSSAI Food License Renewal";
     }
     return "FSSAI Food License Registration";
+  }
+
+  if (fullText.includes("pan")) {
+    if (/\b(reprint|duplicate)\b/.test(fullText)) return "PAN Card Reprint";
+    if (/\b(update|correction|change)\b/.test(fullText)) return "PAN Card Correction";
+    if (/\bnew|application\b/.test(fullText)) return "New PAN Card";
+    return "PAN Card";
+  }
+
+  if (fullText.includes("aadhaar") || fullText.includes("aadhar")) {
+    if (/\bpan\b/.test(fullText) && /\blink\b/.test(fullText)) return "Aadhaar PAN Link";
+    if (/\bnpci\b/.test(fullText)) return "Aadhaar NPCI Link";
+    if (/\bpvc\b/.test(fullText)) return "Aadhaar PVC Card";
+    if (/\b(address|update|correction|change)\b/.test(fullText)) return "Aadhaar Update";
+    return "Aadhaar";
+  }
+
+  if (fullText.includes("passport")) {
+    if (/\brenew|renewal\b/.test(fullText)) return "Passport Renewal";
+    if (/\bnew|application\b/.test(fullText)) return "New Passport Application";
+    return "Passport";
+  }
+
+  if (fullText.includes("voter")) {
+    if ((/aadhaar|aadhar/.test(fullText)) && /link/.test(fullText)) return "Voter Aadhaar Linking";
+    if (/\b(update|correction)\b/.test(fullText) || /(name|address|dob) change/.test(fullText) || /change details/.test(fullText)) return "Voter ID Correction";
+    if (fullText.includes("get your voter") || fullText.includes("new voter card")) return "New Voter ID";
+    if (/\bnew|application\b/.test(fullText)) return "New Voter ID";
+    return "Voter ID";
+  }
+
+  if (
+    fullText.includes("driving") ||
+    fullText.includes("licence") ||
+    fullText.includes("driver license") ||
+    fullText.includes("learner") ||
+    fullText.includes("permanent driving") ||
+    fullText.includes("international driving") ||
+    /\bdl\b/.test(fullText)
+  ) {
+    if (/\blearner\b/.test(fullText)) return "Learner's Driving License";
+    if (/\binternational\b/.test(fullText)) return "International Driving License";
+    if (/\bpermanent\b/.test(fullText)) return "Permanent Driving License";
+    if (/\bduplicate|reprint\b/.test(fullText)) return "Driving License Duplicate";
+    if (/\brenew|renewal\b/.test(fullText)) return "Driving License Renewal";
+    if (/\bupdate|address\b/.test(fullText)) return "Driving License Update";
+    return "Driving License";
+  }
+
+  if (fullText.includes("fastag")) {
+    if (/\b(one year|annual)\b/.test(fullText)) return "FASTag One Year Pass";
+    if (/\bkyv\b/.test(fullText)) return "FASTag KYV";
+  }
+
+  if ((fullText.includes("hsrp") || fullText.includes("number plate")) && /fuel sticker/.test(fullText)) {
+    return "Colour-Coded Fuel Stickers";
+  }
+
+  if (fullText.includes("vehicle") && (fullText.includes("aadhaar") || fullText.includes("aadhar")) && fullText.includes("link")) {
+    return "Vehicle RC Aadhaar Linking";
   }
 
   const cleanDisplayName = cleanDisplayLabel(service.displayName || "");
@@ -126,6 +224,86 @@ function isServiceDiscoveryQuestion(text: string) {
     normalized.includes("which services") ||
     normalized.includes("available services")
   );
+}
+
+function resolveDetectedIntent(message: string, normalizedMessage: string): ChatIntent {
+  const raw = `${message} ${normalizedMessage}`.toLowerCase();
+
+  if (
+    raw.includes("documents") ||
+    raw.includes("document") ||
+    raw.includes("required") ||
+    raw.includes("proof")
+  ) {
+    return "DOCUMENTS";
+  }
+
+  if (
+    raw.includes("process") ||
+    raw.includes("procedure") ||
+    raw.includes("steps") ||
+    raw.includes("how do i apply") ||
+    raw.includes("how to apply")
+  ) {
+    return "PROCESS";
+  }
+
+  if (
+    raw.includes("fees") ||
+    raw.includes("fee") ||
+    raw.includes("charges") ||
+    raw.includes("price") ||
+    raw.includes("cost")
+  ) {
+    return "FEES";
+  }
+
+  if (
+    raw.includes("status") ||
+    raw.includes("track") ||
+    raw.includes("tracking") ||
+    raw.includes("timeline") ||
+    raw.includes("how long")
+  ) {
+    return "STATUS";
+  }
+
+  if (
+    raw.includes("apply now") ||
+    raw.includes("apply link") ||
+    raw.includes("application link") ||
+    raw.trim() === "apply" ||
+    raw.trim() === "yes"
+  ) {
+    return "APPLY";
+  }
+
+  return extractIntent(normalizedMessage);
+}
+
+function isBareCategoryQuery(
+  normalizedMessage: string,
+  category: ConversationState["currentCategory"],
+  intent: ChatIntent
+) {
+  if (!category || category === "GENERAL" || intent !== "GENERAL") return false;
+  const tokens = normalizedMessage.split(/\s+/).filter(Boolean);
+  const bareTokensByCategory: Record<string, string[]> = {
+    PAN: ["pan", "pancard"],
+    AADHAAR: ["aadhaar", "aadhar"],
+    PASSPORT: ["passport"],
+    VOTER_ID: ["voter", "epic", "id"],
+    DRIVING_LICENSE: ["driving", "license", "licence", "dl"],
+    HSRP: ["hsrp", "number", "plate"],
+    CERTIFICATES: ["certificate", "certificates"],
+    GOVERNMENT_SCHEMES: ["government", "scheme", "schemes", "yojana"],
+    BUSINESS_REGISTRATION: ["business", "registration", "registrations"],
+    TRAVEL_DARSHAN: ["travel", "darshan", "booking", "yatra"],
+    LEGAL_DOCUMENTS: ["legal", "document", "documents"],
+  };
+
+  const bareTokens = new Set(bareTokensByCategory[category] || []);
+  return tokens.length > 0 && tokens.every((token) => bareTokens.has(token));
 }
 
 function isGlobalServiceCatalogQuestion(text: string) {
@@ -228,6 +406,136 @@ function hasExplicitServiceMention(text: string) {
 }
 
 function forceServiceFromMessage(services: ServiceRecord[], normalizedMessage: string) {
+  const raw = normalizedMessage.toLowerCase();
+
+  const findService = (match: (haystack: string) => boolean) =>
+    services.find((service) => {
+      const haystack = `${service.title} ${service.displayName || ""} ${service.description || ""} ${(service.aliases || []).join(" ")}`.toLowerCase();
+      return match(haystack);
+    }) || null;
+
+  if (raw.includes("pan")) {
+    if (raw.includes("reprint") || raw.includes("duplicate")) {
+      return findService((haystack) => haystack.includes("pan") && (haystack.includes("reprint") || haystack.includes("duplicate")));
+    }
+
+    if (raw.includes("update") || raw.includes("correction")) {
+      return findService((haystack) => haystack.includes("pan") && (haystack.includes("correction") || haystack.includes("update")));
+    }
+
+    if (raw.includes("new") || raw.includes("apply") || raw.includes("application")) {
+      return findService((haystack) => haystack.includes("pan") && haystack.includes("new"));
+    }
+  }
+
+  if (raw.includes("aadhaar") || raw.includes("aadhar")) {
+    if (raw.includes("pvc")) {
+      return findService((haystack) =>
+        (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("pvc")
+      );
+    }
+
+    if (raw.includes("npci")) {
+      return findService((haystack) =>
+        (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("npci")
+      );
+    }
+
+    if (raw.includes("pan") && raw.includes("link")) {
+      return findService((haystack) =>
+        (haystack.includes("aadhaar") || haystack.includes("aadhar")) &&
+        haystack.includes("pan") &&
+        haystack.includes("link")
+      );
+    }
+
+    if (raw.includes("update") || raw.includes("correction") || raw.includes("address") || raw.includes("change")) {
+      return findService((haystack) =>
+        (haystack.includes("aadhaar") || haystack.includes("aadhar")) &&
+        (haystack.includes("update") || haystack.includes("address") || haystack.includes("correction") || haystack.includes("change"))
+      );
+    }
+
+    if (raw.includes("new") || raw.includes("enrol")) {
+      return findService((haystack) =>
+        (haystack.includes("aadhaar") || haystack.includes("aadhar")) &&
+        (haystack.includes("new") || haystack.includes("enrol"))
+      );
+    }
+  }
+
+  if (raw.includes("passport")) {
+    if (raw.includes("renewal") || raw.includes("expired")) {
+      return findService((haystack) => haystack.includes("passport") && (haystack.includes("renew") || haystack.includes("renewal")));
+    }
+
+    if (raw.includes("new") || raw.includes("apply") || raw.includes("application")) {
+      return findService((haystack) => haystack.includes("passport") && (haystack.includes("new") || haystack.includes("application")));
+    }
+
+    return findService((haystack) => haystack.includes("passport"));
+  }
+
+  if (raw.includes("voter")) {
+    if ((raw.includes("aadhaar") || raw.includes("aadhar")) && raw.includes("link")) {
+      return findService((haystack) =>
+        haystack.includes("voter") &&
+        (haystack.includes("aadhaar") || haystack.includes("aadhar")) &&
+        haystack.includes("link")
+      );
+    }
+
+    if (raw.includes("update") || raw.includes("correction")) {
+      return findService((haystack) => haystack.includes("voter") && (haystack.includes("correction") || haystack.includes("update")));
+    }
+
+    if (raw.includes("new") || raw.includes("apply") || raw.includes("application")) {
+      return findService((haystack) => haystack.includes("voter") && haystack.includes("new"));
+    }
+
+    return findService((haystack) => haystack.includes("voter"));
+  }
+
+  if (raw.includes("driving") || raw.includes("license") || raw.includes("licence") || raw.includes("learner") || raw.includes("learners") || raw.includes("dl")) {
+    if (raw.includes("international")) {
+      return findService((haystack) => haystack.includes("international") && (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")));
+    }
+
+    if (raw.includes("permanent")) {
+      return findService((haystack) => haystack.includes("permanent") && (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")));
+    }
+
+    if (raw.includes("reprint") || raw.includes("duplicate")) {
+      return findService((haystack) =>
+        (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")) &&
+        (haystack.includes("duplicate") || haystack.includes("reprint"))
+      );
+    }
+
+    if (raw.includes("renewal")) {
+      return findService((haystack) =>
+        (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")) &&
+        (haystack.includes("renew") || haystack.includes("renewal"))
+      );
+    }
+
+    if (raw.includes("update") || raw.includes("address")) {
+      return findService((haystack) =>
+        (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")) &&
+        (haystack.includes("update") || haystack.includes("address"))
+      );
+    }
+
+    if (raw.includes("learner") || raw.includes("learners")) {
+      return findService((haystack) => haystack.includes("learner") && (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")));
+    }
+
+    return findService((haystack) =>
+      (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence")) &&
+      (haystack.includes("learner") || haystack.includes("new") || haystack.includes("application"))
+    );
+  }
+
   if (
     normalizedMessage.includes("fssai") ||
     normalizedMessage.includes("food license") ||
@@ -250,6 +558,18 @@ function forceServiceFromMessage(services: ServiceRecord[], normalizedMessage: s
     );
   }
 
+  if (raw.includes("fastag") && (raw.includes("one year") || raw.includes("annual"))) {
+    return findService((haystack) => haystack.includes("fastag") && (haystack.includes("one year") || haystack.includes("annual")));
+  }
+
+  if (raw.includes("fastag") && raw.includes("kyv")) {
+    return findService((haystack) => haystack.includes("fastag") && haystack.includes("kyv"));
+  }
+
+  if (raw.includes("vehicle") && (raw.includes("aadhaar") || raw.includes("aadhar")) && raw.includes("link")) {
+    return findService((haystack) => haystack.includes("vehicle") && (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("link"));
+  }
+
   return null;
 }
 
@@ -260,6 +580,24 @@ function shouldHandleAsCompanyQuestion(
   hasCurrentService: boolean
 ) {
   if (!companyIntent) return false;
+
+  const companyReferenceQuestion =
+    (normalizedMessage.includes("you") ||
+      normalizedMessage.includes("your") ||
+      normalizedMessage.includes("jaagruk") ||
+      normalizedMessage.includes("portal") ||
+      normalizedMessage.includes("platform")) &&
+    (normalizedMessage.includes("why") ||
+      normalizedMessage.includes("trust") ||
+      normalizedMessage.includes("consider") ||
+      normalizedMessage.includes("choose") ||
+      normalizedMessage.includes("pay") ||
+      normalizedMessage.includes("fee") ||
+      normalizedMessage.includes("cost") ||
+      normalizedMessage.includes("charge"));
+
+  if (companyReferenceQuestion && ["TRUST", "COMPARISON"].includes(companyIntent)) return true;
+
   if (["DOCUMENTS", "PROCESS", "APPLY", "STATUS"].includes(detectedIntent)) return false;
   // Allow FEES intent for comparison questions when there's context
   if (detectedIntent === "FEES" && companyIntent === "COMPARISON" && hasCurrentService) return true;
@@ -282,6 +620,8 @@ function isWeakProcessText(text: string) {
     "apply now",
     "click here",
     "start now",
+    "applicationprocesstitle",
+    "applicationprocessdescription",
   ].some((pattern) => normalized.includes(pattern));
 }
 
@@ -375,6 +715,67 @@ function safeDocumentsFallback(
   return `For ${serviceName}, this may usually require identity proof, address proof, and service-specific supporting documents. Once you start the process, our team will share the exact Jaagruk Bharat document list.`;
 }
 
+function isDrivingAgeEligibilityQuestion(normalizedMessage: string) {
+  const hasDrivingContext =
+    normalizedMessage.includes("driving") ||
+    normalizedMessage.includes("license") ||
+    normalizedMessage.includes("licence") ||
+    normalizedMessage.includes("dl");
+
+  if (!hasDrivingContext) return false;
+
+  const hasAgeSignal =
+    normalizedMessage.includes("under 18") ||
+    normalizedMessage.includes("below 18") ||
+    normalizedMessage.includes("minor") ||
+    normalizedMessage.includes("age") ||
+    /\bi am\s*1[0-7]\b/.test(normalizedMessage) ||
+    /\bim\s*1[0-7]\b/.test(normalizedMessage) ||
+    /\b(?:16|17)\s*years?\b/.test(normalizedMessage);
+
+  const hasEligibilitySignal =
+    normalizedMessage.includes("can i") ||
+    normalizedMessage.includes("eligible") ||
+    normalizedMessage.includes("allowed") ||
+    normalizedMessage.includes("get") ||
+    normalizedMessage.includes("apply");
+
+  return hasAgeSignal && hasEligibilitySignal;
+}
+
+function findLearnerDrivingService(services: ServiceRecord[]) {
+  return (
+    services.find((service) => {
+      const haystack = `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
+      return (
+        haystack.includes("learner") &&
+        (haystack.includes("driving") || haystack.includes("license") || haystack.includes("licence"))
+      );
+    }) || null
+  );
+}
+
+function buildDrivingAgeEligibilityReply(
+  language: ConversationState["language"],
+  learnerService: ServiceRecord | null
+) {
+  const learnerName = learnerService ? presentServiceName(learnerService) : "Learner's Driving License";
+
+  if (language === "Hindi") {
+    return `${learnerName} के लिए age rule समझ लीजिए:\n\n- 18 से कम उम्र में सामान्य/गेयर्ड Driving License नहीं बनता।\n- कई राज्यों में 16+ उम्र पर (parent/guardian consent के साथ) gearless two-wheeler (up to 50cc) के लिए Learner License मिल सकता है।\n- 18+ पर regular Learner और आगे Permanent License apply किया जाता है।\n\nअगर आप चाहें, मैं आपके लिए सही ${learnerName} path में documents, process या fees अभी बताता हूँ।`;
+  }
+
+  if (language === "Hinglish") {
+    return `${learnerName} ke liye age rule simple hai:\n\n- Under 18, regular/geared Driving License usually allowed nahi hota.\n- Kai states mein 16+ age par (parent/guardian consent ke saath) gearless two-wheeler (up to 50cc) ke liye Learner License mil sakta hai.\n- 18+ par regular Learner aur phir Permanent License apply hota hai.\n\nAgar aap chaho, main abhi aapke case ke liye right ${learnerName} documents, process ya fees bata deta hoon.`;
+  }
+
+  if (language === "Telugu") {
+    return `${learnerName} కి age rule ఇలా ఉంటుంది:\n\n- 18 కన్నా తక్కువ వయస్సులో regular/geared Driving License సాధారణంగా రాదు.\n- చాలా రాష్ట్రాల్లో 16+ వయస్సులో (parent/guardian consentతో) gearless two-wheeler (up to 50cc) కోసం Learner License రావచ్చు.\n- 18+ తర్వాత regular Learner మరియు Permanent License కోసం apply చేస్తారు.\n\nమీకు కావాలంటే, మీ caseకి సరిపోయే ${learnerName} documents, process లేదా fees ఇప్పుడే చెబుతాను.`;
+  }
+
+  return `For ${learnerName}, here is the age rule:\n\n- Under 18, a regular/geared Driving License is usually not allowed.\n- In many states, at age 16+ (with parent/guardian consent), you may get a Learner License for a gearless two-wheeler (up to 50cc).\n- At 18+, you can apply for regular Learner and then Permanent License.\n\nIf you want, I can now guide your exact ${learnerName} documents, process, or fees.`;
+}
+
 function buildCompanyReply(
   intent: string,
   language: ConversationState["language"],
@@ -387,49 +788,51 @@ function buildCompanyReply(
     activeService?.trustPoints?.length
       ? activeService.trustPoints
       : [
-          "guided support from start to application",
-          "document verification support",
-          "single platform experience without multiple portals",
+          "no travel and no waiting in lines",
+          "expert-guided filing to avoid form errors",
+          "real support team till completion",
+          "secure, single-window process on Jaagruk Bharat",
         ];
   const comparisonPoints =
     activeService?.comparisonPoints?.length
       ? activeService.comparisonPoints
       : [
-          "right service identification",
-          "documents and process guidance",
-          "apply journey on Jaagruk Bharat only",
+          "no office visits, no queue, no agent chasing",
+          "guided end-to-end support in minutes, not hours of confusion",
+          "document checks and application support till submission",
+          "dedicated help if portal or OTP issues happen",
         ];
 
   if (intent === "TRUST") {
     if (language === "Hindi") {
-      return `${serviceName ? `${serviceName} के लिए ` : ""}आप Jaagruk Bharat पर भरोसा कर सकते हैं क्योंकि हमारी टीम आपको सही सेवा चुनने, दस्तावेज़ समझने और आवेदन पूरा करने में step-by-step मदद करती है.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
+      return `${serviceName ? `${serviceName} के लिए ` : ""}आप Jaagruk Bharat पर भरोसा कर सकते हैं क्योंकि हम सिर्फ जानकारी नहीं देते, आपका काम पूरा होने तक साथ रहते हैं.\n\n${bulletLines(trustPoints)}\n\nअगर आप चाहें तो मैं अभी apply link शेयर कर सकता हूँ.${applyLine}`;
     }
 
     if (language === "Hinglish") {
-      return `${serviceName ? `${serviceName} ke liye ` : ""}aap Jaagruk Bharat par trust kar sakte hain kyunki hamari team aapko sahi service choose karne, documents samajhne aur application complete karne mein step-by-step help karti hai.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
+      return `${serviceName ? `${serviceName} ke liye ` : ""}aap Jaagruk Bharat par trust kar sakte hain kyunki hum sirf information nahi dete, hum aapka kaam complete karwane tak saath rehte hain.\n\n${bulletLines(trustPoints)}\n\nAgar aap chahen to main abhi ${serviceName || "service"} ka apply link share kar doon.${applyLine}`;
     }
 
     if (language === "Telugu") {
-      return `${serviceName ? `${serviceName} కోసం ` : ""}Jaagruk Bharat ను నమ్మవచ్చు, ఎందుకంటే మా టీమ్ సరైన సేవను ఎంచుకోవడం నుంచి అప్లికేషన్ పూర్తి చేసే వరకు step-by-step సహాయం చేస్తుంది.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
+      return `${serviceName ? `${serviceName} కోసం ` : ""}Jaagruk Bharat ను నమ్మవచ్చు, ఎందుకంటే మేము కేవలం సమాచారం మాత్రమే కాదు, మీ పని పూర్తి అయ్యే వరకు సహాయం చేస్తాము.\n\n${bulletLines(trustPoints)}\n\nమీకు కావాలంటే నేను ఇప్పుడే apply link షేర్ చేస్తాను.${applyLine}`;
     }
 
-    return `${serviceName ? `For your ${serviceName} service, ` : ""}you can trust Jaagruk Bharat because our team guides you from service selection to application submission.\n\n${bulletLines(trustPoints)}\n\n${copy.askMore}${applyLine}`;
+    return `${serviceName ? `For your ${serviceName}, ` : ""}You can trust Jaagruk Bharat because we focus on completion, not just information. Your work is guided end-to-end by a real support team.\n\n${bulletLines(trustPoints)}\n\nIf you want, I can share the apply link right now.${applyLine}`;
   }
 
   if (intent === "COMPARISON") {
     if (language === "Hindi") {
-      return `Jaagruk Bharat का फर्क यह है कि हम सिर्फ जानकारी नहीं देते, बल्कि आपको ${serviceName || "service"} application तक guide करते हैं.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
+      return `बहुत अच्छा सवाल। सरकारी पोर्टल पर शुल्क कम हो सकता है, लेकिन समय, गलती और दोबारा काम की लागत बहुत बढ़ जाती है। Jaagruk Bharat में आपको ${serviceName || "service"} के लिए fast और guided support मिलता है.\n\n${bulletLines(comparisonPoints)}\n\nसीधी बात: आपका काम जल्दी और सही तरीके से पूरा हो। इसी लिए लोग Jaagruk Bharat चुनते हैं। ${copy.askMore}${applyLine}`;
     }
 
     if (language === "Hinglish") {
-      return `Jaagruk Bharat ka difference yeh hai ki hum sirf information nahi dete, balki aapko ${serviceName || "service"} application tak guide karte hain.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
+      return `Great question. Government portal ka service free ho sakta hai, lekin time, confusion aur rework ka cost high hota hai. Jaagruk Bharat mein aapko ${serviceName || "service"} ke liye fast, guided aur stress-free support milta hai.\n\n${bulletLines(comparisonPoints)}\n\nAapka goal simple hai: kaam jaldi aur sahi ho. Isi liye log Jaagruk Bharat choose karte hain. ${copy.askMore}${applyLine}`;
     }
 
     if (language === "Telugu") {
-      return `Jaagruk Bharat లో తేడా ఏమిటంటే, మేము కేవలం సమాచారం మాత్రమే కాదు, ${serviceName || "service"} application వరకు మీకు guide చేస్తాము.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
+      return `చాలా మంచి ప్రశ్న. ప్రభుత్వ పోర్టల్‌లో ఫీజు తక్కువగా ఉండొచ్చు, కానీ సమయం, తప్పులు, మళ్లీ చేయాల్సిన పని ఖర్చు ఎక్కువ అవుతుంది. Jaagruk Bharat‌లో మీకు ${serviceName || "service"} కోసం వేగంగా మరియు guided support లభిస్తుంది.\n\n${bulletLines(comparisonPoints)}\n\nసింపుల్‌గా చెప్పాలంటే: మీ పని త్వరగా, సరిగ్గా పూర్తవుతుంది. అందుకే ప్రజలు Jaagruk Bharat‌ని ఎంచుకుంటారు. ${copy.askMore}${applyLine}`;
     }
 
-    return `Jaagruk Bharat is different because we do not stop at giving information. We guide you all the way to the ${serviceName || "service"} application.\n\n${bulletLines(comparisonPoints)}\n\n${copy.askMore}${applyLine}`;
+    return `Great question. The government path may look cheaper, but the real cost is time, retries, and mistakes. On Jaagruk Bharat, you get fast, guided, end-to-end support for ${serviceName || "your application"}.\n\n${bulletLines(comparisonPoints)}\n\nSimple outcome: your work gets done quickly and correctly. ${copy.askMore}${applyLine}`;
   }
 
   return null;
@@ -545,6 +948,32 @@ function quickRepliesForStage(stage: ConversationStage) {
   return ["Apply now"];
 }
 
+function buildServiceMatchText(service: ServiceRecord) {
+  return `${service.title} ${service.displayName || ""} ${service.description || ""}`.toLowerCase();
+}
+
+function mismatchesHighSignalRequest(message: string, service: ServiceRecord) {
+  const haystack = buildServiceMatchText(service);
+
+  if ((message.includes("aadhaar") || message.includes("aadhar")) && message.includes("pvc")) {
+    return !haystack.includes("pvc");
+  }
+
+  if (
+    message.includes("voter") &&
+    (message.includes("aadhaar") || message.includes("aadhar")) &&
+    message.includes("link")
+  ) {
+    return !(haystack.includes("voter") && (haystack.includes("aadhaar") || haystack.includes("aadhar")) && haystack.includes("link"));
+  }
+
+  if (message.includes("caste") && message.includes("certificate") && message.includes("haryana")) {
+    return !(haystack.includes("caste") && haystack.includes("haryana"));
+  }
+
+  return false;
+}
+
 async function resolveService(
   message: string,
   normalizedMessage: string,
@@ -554,18 +983,21 @@ async function resolveService(
   detectedIntent: ChatIntent
 ) {
   const forcedServiceMatch = findForcedServiceMatch(services, normalizedMessage);
-  if (forcedServiceMatch) return forcedServiceMatch;
+  if (forcedServiceMatch && !mismatchesHighSignalRequest(normalizedMessage, forcedServiceMatch)) {
+    return forcedServiceMatch;
+  }
 
   const exactServiceMatch = findExactServiceMatch(services, normalizedMessage);
-  if (exactServiceMatch) return exactServiceMatch;
+  if (exactServiceMatch && !mismatchesHighSignalRequest(normalizedMessage, exactServiceMatch)) {
+    return exactServiceMatch;
+  }
 
-  // If current service title words appear in message, use current service
-  if (currentService) {
-    const currentTitleWords = currentService.title.toLowerCase().split(/\s+/);
-    const messageWords = normalizedMessage.toLowerCase().split(/\s+/);
-    if (currentTitleWords.some(word => messageWords.includes(word))) {
-      return currentService;
-    }
+  if (
+    ((normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) && normalizedMessage.includes("pvc")) ||
+    (normalizedMessage.includes("voter") && (normalizedMessage.includes("aadhaar") || normalizedMessage.includes("aadhar")) && normalizedMessage.includes("link")) ||
+    (normalizedMessage.includes("caste") && normalizedMessage.includes("certificate") && normalizedMessage.includes("haryana"))
+  ) {
+    return null;
   }
 
   const detectedCategoryFromMessage = detectCategory(normalizedMessage);
@@ -573,6 +1005,11 @@ async function resolveService(
     ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
     !hasExplicitServiceMention(normalizedMessage) &&
     detectedCategoryFromMessage === "GENERAL";
+
+  if (!currentService && followUpOnly) {
+    return null;
+  }
+
   const category =
     detectedCategoryFromMessage !== "GENERAL"
       ? detectedCategoryFromMessage
@@ -592,10 +1029,13 @@ async function resolveService(
   // If current service matches explicit mention, keep it
   if (currentService && hasExplicitServiceMention(normalizedMessage)) {
     const currentTitle = currentService.title.toLowerCase();
-    const currentAliases = (currentService.aliases || []).map(a => a.toLowerCase());
-    const messageWords = normalizedMessage.toLowerCase().split(/\s+/);
-    const matchesCurrent = [currentTitle, ...currentAliases].some(term =>
-      messageWords.some(word => term.includes(word) || word.includes(term))
+    const currentAliases = (currentService.aliases || []).map((alias) => alias.toLowerCase());
+    const messageWords = normalizedMessage
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((word) => word.length > 3);
+    const matchesCurrent = [currentTitle, ...currentAliases].some((term) =>
+      messageWords.some((word) => term.includes(word))
     );
     if (matchesCurrent) {
       return currentService;
@@ -638,7 +1078,7 @@ async function resolveService(
       detectedCategoryFromMessage !== currentCategoryName;
 
     if (!mentionsDifferentCategory && !mentionsDifferentService) {
-      const currentTitleWords = currentService.title
+      const currentTitleWords = (currentService.displayName || currentService.title)
         .toLowerCase()
         .split(/\s+/)
         .filter((word) => word.length > 2);
@@ -699,7 +1139,7 @@ export async function POST(req: NextRequest) {
     const normalizedMessage = normalizeUserText(message);
     const companyIntent = detectCompanyIntent(normalizedMessage);
     const category = detectCategory(normalizedMessage);
-    const detectedIntent = extractIntent(normalizedMessage);
+    const detectedIntent = resolveDetectedIntent(message, normalizedMessage);
     const isGenericFollowUp =
       ["DOCUMENTS", "PROCESS", "FEES", "APPLY", "STATUS"].includes(detectedIntent) &&
       !hasExplicitServiceMention(normalizedMessage) &&
@@ -712,6 +1152,33 @@ export async function POST(req: NextRequest) {
       language,
       currentService: body.currentService || incomingConversation.currentService || null,
     };
+
+    if (isBareCategoryQuery(normalizedMessage, category, detectedIntent)) {
+      const categoryServices = listServicesForCategory(services, category);
+      const categoryName = categoryLabel(category) || "this category";
+      const serviceList = categoryServices.length
+        ? categoryServices.map((item) => `- ${item}`).join("\n")
+        : "- Apply now\n- Documents\n- Process\n- Fees";
+
+      return NextResponse.json({
+        reply:
+          language === "Hindi"
+            ? `${categoryName} ke liye ye services available hain:\n\n${serviceList}\n\nPlease exact service choose kijiye.`
+            : language === "Telugu"
+              ? `${categoryName} కి ఈ services available ఉన్నాయి:\n\n${serviceList}\n\nదయచేసి exact service ఎంచుకోండి.`
+              : `We provide these ${categoryName} services through Jaagruk Bharat:\n\n${serviceList}\n\nPlease choose the exact service you need.`,
+        conversation: {
+          ...conversation,
+          stage: "SERVICE_IDENTIFIED",
+          currentIntent: "GENERAL",
+          currentCategory: category,
+          currentService: null,
+        },
+        quickReplies: categoryServices.slice(0, 4).length
+          ? categoryServices.slice(0, 4)
+          : ["Documents", "Process", "Fees", "Apply now"],
+      });
+    }
 
     if (isGreeting(message)) {
       const greeting = conversation.currentService
@@ -763,6 +1230,45 @@ export async function POST(req: NextRequest) {
         quickReplies: conversation.currentService
           ? ["Documents", "Process", "Fees", "Apply now"]
           : ["PAN Card", "Aadhaar", "Passport"],
+      });
+    }
+
+    if (isDrivingAgeEligibilityQuestion(normalizedMessage)) {
+      const learnerService = findLearnerDrivingService(services);
+      return NextResponse.json({
+        reply: buildDrivingAgeEligibilityReply(language, learnerService),
+        service: learnerService,
+        conversation: {
+          ...conversation,
+          stage: "ASK_USER_INTENT",
+          currentIntent: "GENERAL",
+          currentCategory: learnerService ? mapCategoryFromService(learnerService) : "DRIVING_LICENSE",
+          currentService: learnerService,
+        },
+        quickReplies: ["Documents", "Process", "Fees", "Apply now"],
+      });
+    }
+
+    if (
+      isGenericFollowUp &&
+      !conversation.currentService &&
+      conversation.currentCategory
+    ) {
+      const categoryServices = listServicesForCategory(services, conversation.currentCategory);
+      const categoryName = categoryLabel(conversation.currentCategory) || "this category";
+      const options = categoryServices.slice(0, 4);
+
+      return NextResponse.json({
+        reply:
+          language === "Hindi"
+            ? `${categoryName} के लिए कई services उपलब्ध हैं। कृपया पहले exact service चुनें, फिर मैं documents, process, fees या apply link बताऊंगा.\n\n${options.map((item) => `- ${item}`).join("\n")}`
+            : language === "Telugu"
+              ? `${categoryName} కి చాలా services ఉన్నాయి. ముందు exact service ఎంచుకోండి, తర్వాత నేను documents, process, fees లేదా apply link చెబుతాను.\n\n${options.map((item) => `- ${item}`).join("\n")}`
+              : `${categoryName} has multiple services. Please choose the exact service first, and then I can help with documents, process, fees, or apply link.\n\n${options.map((item) => `- ${item}`).join("\n")}`,
+        conversation: {
+          ...conversation,
+        },
+        quickReplies: options.length ? options : ["Aadhaar", "PAN Card", "Passport"],
       });
     }
 
@@ -947,9 +1453,10 @@ export async function POST(req: NextRequest) {
         : looksLikeUsefulProcessText(topLines(bodyProcess))
           ? topLines(bodyProcess)
           : "";
-      const structuredProcess = service.processSteps?.length
-        ? bulletList(service.processSteps)
-        : "";
+      const structuredProcess =
+        service.processSteps?.length && !isWeakProcessText(service.processSteps.join("\n"))
+          ? bulletList(service.processSteps)
+          : "";
       const process = structuredProcess
         ? structuredProcess
         : !processSource
@@ -1060,7 +1567,9 @@ export async function POST(req: NextRequest) {
             ? `${serviceName} kho jaana pareshan karne wala ho sakta hai, lekin tension mat lijiye. Hum Jaagruk Bharat ke through iske reprint mein aapki help kar sakte hain.`
           : language === "Telugu"
             ? `${serviceName} పోవడం ఇబ్బందిగా ఉంటుంది, కానీ చింతించకండి. Jaagruk Bharat ద్వారా రీప్రింట్‌లో మేము సహాయం చేస్తాము.`
-            : `I'm sorry to hear that. We can help you with your ${serviceName} reprint through Jaagruk Bharat.`
+            : serviceAlreadyReflectsIntent(serviceName, "REPRINT")
+              ? `I'm sorry to hear that. We can help you with ${serviceName} through Jaagruk Bharat.`
+              : `I'm sorry to hear that. We can help you with your ${serviceName} reprint through Jaagruk Bharat.`
         : detectedIntent === "UPDATE"
           ? language === "Hindi"
             ? serviceAlreadyReflectsIntent(serviceName, "UPDATE")
