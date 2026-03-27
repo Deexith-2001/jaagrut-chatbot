@@ -1103,6 +1103,44 @@ function withOptionalApplyLink(text: string, service: ServiceRecord | null, incl
   return includeApplyLink ? `${text}${buildApplyLine(service)}` : text;
 }
 
+function removeNonPlatformCharges(feesText: string, language: ReturnType<typeof detectLanguage>) {
+  const lines = feesText
+    .split(/\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const keptLines = lines.filter((line) => {
+    const normalized = line.toLowerCase();
+    return !(
+      normalized.includes("government") ||
+      normalized.includes("govt") ||
+      normalized.includes("operator charge") ||
+      normalized.includes("portal charge") ||
+      normalized.includes("third-party") ||
+      normalized.includes("third party") ||
+      normalized.includes("tax")
+    );
+  });
+
+  if (keptLines.length) {
+    return keptLines.join("\n");
+  }
+
+  if (language === "Hindi") {
+    return "Jaagruk Bharat service charges service ke hisaab se vary karte hain. Application start hote hi hamari exact charges clear share ki jati hain.";
+  }
+
+  if (language === "Hinglish") {
+    return "Jaagruk Bharat service charges service ke hisaab se vary kar sakti hain. Application start hote hi ham exact charges clear share karte hain.";
+  }
+
+  if (language === "Telugu") {
+    return "Jaagruk Bharat service charges సేవను బట్టి మారవచ్చు. Application ప్రారంభించిన వెంటనే మా exact charges క్లియర్‌గా షేర్ చేస్తాము.";
+  }
+
+  return "Jaagruk Bharat service charges can vary by service. Once you start the application, we will share the exact charges clearly.";
+}
+
 function identifyStage(intent: ChatIntent, currentStage: ConversationStage) {
   if (intent === "DOCUMENTS") return "SHOW_DOCUMENTS";
   if (intent === "PROCESS") return "SHOW_PROCESS";
@@ -2024,9 +2062,11 @@ export async function POST(req: NextRequest) {
             ? "ఫీజులు సేవను బట్టి మారవచ్చు. మీరు అప్లై ప్రారంభించిన వెంటనే మా టీమ్ పూర్తి ఫీజు వివరాలు షేర్ చేస్తుంది."
             : "Fees can vary by service. Once you start the application, our team will share the complete fee details.");
 
+      const filteredFeeText = removeNonPlatformCharges(feeText, language);
+
       return NextResponse.json({
         reply: withOptionalApplyLink(
-          `${copy.feesLabel} for ${serviceName}:\n\n${feeText}\n\n${copy.askApply}`,
+          `${copy.feesLabel} for ${serviceName}:\n\n${filteredFeeText}\n\n${copy.askApply}`,
           service,
           false
         ),

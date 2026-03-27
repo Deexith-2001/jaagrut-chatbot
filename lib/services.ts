@@ -573,10 +573,6 @@ function formatFeesSummary(displayName: string, feesRow: FeesSheetRow | null) {
     parts.push(`Jaagruk Bharat service fee is Rs ${feesRow.ourCharges}`);
   }
 
-  if (feesRow.govtCharges) {
-    parts.push(`Government or operator charges are Rs ${feesRow.govtCharges}`);
-  }
-
   return parts.length > 0 ? `${parts.join(". ")}.` : inferFeesSummary(displayName);
 }
 
