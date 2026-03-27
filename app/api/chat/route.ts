@@ -24,16 +24,16 @@ import { detectServiceWithAI } from "../../../lib/serviceAI";
 import { getServices } from "../../../lib/services";
 
 function isGreeting(text: string) {
-  const normalized = text.toLowerCase().trim();
-  return [
-    /^hi\b/,
-    /^hii\b/,
-    /^hai\b/,
-    /^hello\b/,
-    /^hey\b/,
-    /^namaste\b/,
-    /^good morning\b/,
-  ].some((pattern) => pattern.test(normalized));
+  const normalized = text
+    .toLowerCase()
+    .trim()
+    .replace(/[!?.,]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  // Treat as greeting only when the entire message is a salutation.
+  return /^(hi|hii|hai|hello|hey|namaste|good morning|good afternoon|good evening)(\s+(sir|madam|bhai|bro|team|ji))?$/.test(
+    normalized
+  );
 }
 
 function cleanServiceName(title: string) {
