@@ -142,7 +142,7 @@ const intentKeywordMap: Array<{ intent: ChatIntent; keywords: string[] }> = [
   { intent: "PROCESS", keywords: ["process", "procedure", "steps", "how"] },
   { intent: "FEES", keywords: ["fees", "fee", "charges", "price", "cost"] },
   { intent: "STATUS", keywords: ["status", "track", "tracking", "progress", "how long", "kitna time", "kitne din", "kab tak", "delivery", "timeline"] },
-  { intent: "APPLY", keywords: ["apply", "application", "link", "start", "yes"] },
+  { intent: "APPLY", keywords: ["apply", "link", "yes"] },
   { intent: "NEW", keywords: ["new", "fresh", "first time"] },
 ];
 
@@ -668,6 +668,10 @@ export function mapServiceFromCategoryAndIntent(
       return haystack.includes("new");
     }
 
+    if (category === "AADHAAR" && intent === "NEW") {
+      return haystack.includes("new") || haystack.includes("enrol") || haystack.includes("enrollment");
+    }
+
     if (category === "VOTER_ID" && intent === "UPDATE") {
       return haystack.includes("correction") || haystack.includes("update");
     }
@@ -691,6 +695,22 @@ export function mapServiceFromCategoryAndIntent(
   });
 
   if (strictIntentMatch) return strictIntentMatch;
+
+  if (category === "AADHAAR" && intent === "NEW") {
+    const genericAadhaarMatch = narrowed.find((service) => {
+      const haystack = buildServiceKeywords(service);
+      return (
+        haystack.includes("aadhaar") &&
+        !haystack.includes("update") &&
+        !haystack.includes("correction") &&
+        !haystack.includes("pvc") &&
+        !haystack.includes("npci") &&
+        !haystack.includes("link")
+      );
+    });
+
+    if (genericAadhaarMatch) return genericAadhaarMatch;
+  }
 
   const fuzzyMatch = findBestServiceMatch(services, normalizedMessage, category);
   if (fuzzyMatch) return fuzzyMatch;

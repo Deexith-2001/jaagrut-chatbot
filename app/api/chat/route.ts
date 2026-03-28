@@ -815,6 +815,51 @@ function isHsrpContextActive(
   return mapCategoryFromService(currentService) === "HSRP";
 }
 
+/**
+ * Returns true when the user's message looks like a genuine question rather
+ * than a direct service-action request (apply / show docs / show fees etc.).
+ * Used to route through AI instead of the generic "Would you like to apply?" prompt.
+ */
+function isConversationalQuestion(message: string): boolean {
+  if (message.includes("?")) return true;
+
+  const normalized = message.toLowerCase().trim();
+
+  // Starts with a question word / auxiliary verb
+  if (
+    /^(what|when|where|why|how|can|could|should|would|is|are|do|does|will|am|may|might|shall|at what)\b/.test(
+      normalized
+    )
+  )
+    return true;
+
+  // Question patterns anywhere in the message
+  if (
+    [
+      /\bcan i\b/,
+      /\bshould i\b/,
+      /\bdo i\b/,
+      /\bwill i\b/,
+      /\bam i\b/,
+      /\bis it\b/,
+      /\bhow (do|can|should|long|much|many)\b/,
+      /\bwhat (is|are|age|documents|happens|photo|proof)\b/,
+      /\bwhen (should|can|do|is|are|will|to)\b/,
+      /\bat what age\b/,
+      /\bwithout (a |the )?\w+\b/,
+      /\bdont have\b/,
+      /\bdon't have\b/,
+      /\bno \w+ (can|will|do|is)\b/,
+    ].some((pattern) => pattern.test(normalized))
+  )
+    return true;
+
+  // Statement-form questions: "X is mandatory", "X is required", "X is needed", etc.
+  return /\b(mandatory|required|needed|necessary|compulsory|needed|acceptable|allowed|valid|eligible|minimum|maximum)\b/.test(
+    normalized
+  );
+}
+
 function findHsrpService(services: ServiceRecord[]) {
   return (
     services.find((service) => {
@@ -945,6 +990,73 @@ function buildDrivingAgeEligibilityReply(
   }
 
   return `For ${learnerName}, here is the age rule:\n\n- Under 18, a regular/geared Driving License is usually not allowed.\n- In many states, at age 16+ (with parent/guardian consent), you may get a Learner License for a gearless two-wheeler (up to 50cc).\n- At 18+, you can apply for regular Learner and then Permanent License.\n\nIf you want, I can now guide your exact ${learnerName} documents, process, or fees.`;
+}
+
+function buildQuestionGuardReply(
+  language: ConversationState["language"],
+  service: ServiceRecord,
+  normalizedMessage: string,
+  copy: CopyBlock
+) {
+  const category = mapCategoryFromService(service);
+  const haystack = buildServiceMatchText(service);
+  const serviceName = presentServiceName(service);
+  const missingSignal =
+    normalizedMessage.includes("dont have") ||
+    normalizedMessage.includes("don't have") ||
+    normalizedMessage.includes("without") ||
+    normalizedMessage.includes("no ");
+
+  const asksAboutAddressProof = normalizedMessage.includes("address proof");
+  const asksAboutMandatory =
+    normalizedMessage.includes("mandatory") ||
+    normalizedMessage.includes("required") ||
+    normalizedMessage.includes("necessary") ||
+    normalizedMessage.includes("needed");
+  const asksAboutVehicleGap =
+    normalizedMessage.includes("vehicle") ||
+    normalizedMessage.includes("car") ||
+    normalizedMessage.includes("bike") ||
+    normalizedMessage.includes("rc");
+
+  if (category === "HSRP" && missingSignal && asksAboutVehicleGap) {
+    if (language === "Hindi") {
+      return `${serviceName} बिना registered vehicle और RC details के आगे नहीं बढ़ सकता. यह booking किसी existing vehicle के लिए होती है, खासकर pre-April 2019 registration cases में. अगर आपके पास vehicle number या RC नहीं है, तो HSRP booking अभी proceed नहीं होगी.\n\n${copy.askMore}`;
+    }
+
+    if (language === "Hinglish") {
+      return `${serviceName} bina registered vehicle aur RC details ke proceed nahi ho sakta. Ye booking existing vehicle ke liye hoti hai, especially pre-April 2019 registration cases mein. Agar aapke paas vehicle number ya RC nahi hai, to HSRP booking abhi start nahi ho payegi.\n\n${copy.askMore}`;
+    }
+
+    if (language === "Telugu") {
+      return `${serviceName} కోసం registered vehicle మరియు RC details లేకపోతే process ముందుకు వెళ్లదు. ఈ booking existing vehicle కోసం ఉంటుంది, ముఖ్యంగా pre-April 2019 registration cases కి. మీ వద్ద vehicle number లేదా RC లేకపోతే HSRP booking ఇప్పుడే proceed కాదు.\n\n${copy.askMore}`;
+    }
+
+    return `${serviceName} cannot proceed without a registered vehicle and RC details. This booking is for an existing vehicle, mainly for pre-April 2019 registration cases. If you do not have the vehicle number or RC details, the HSRP booking cannot be started yet.\n\n${copy.askMore}`;
+  }
+
+  if (
+    category === "AADHAAR" &&
+    /update|correction|change|address/.test(haystack) &&
+    asksAboutAddressProof &&
+    (asksAboutMandatory || missingSignal)
+  ) {
+    if (language === "Hindi") {
+      return `Address-related ${serviceName} में address proof आमतौर पर जरूरी होता है. अगर आपके पास accepted address proof नहीं है, तो उस specific update को पहले proceed नहीं किया जा सकता. पहले valid address proof arrange करना होगा, फिर Jaagruk Bharat team exact accepted document list के साथ help करेगी.\n\n${copy.askMore}`;
+    }
+
+    if (language === "Hinglish") {
+      return `Address-related ${serviceName} mein address proof usually mandatory hota hai. Agar aapke paas accepted address proof nahi hai, to ye specific update abhi proceed nahi hoga. Pehle valid address proof arrange karna padega, phir Jaagruk Bharat team exact accepted document list ke saath help karegi.\n\n${copy.askMore}`;
+    }
+
+    if (language === "Telugu") {
+      return `Address-related ${serviceName} కోసం address proof సాధారణంగా అవసరం ఉంటుంది. మీ వద్ద accepted address proof లేకపోతే ఆ specific update ఇప్పుడే proceed కాదు. ముందుగా valid address proof arrange చేయాలి, తర్వాత Jaagruk Bharat team exact accepted document list తో help చేస్తుంది.\n\n${copy.askMore}`;
+    }
+
+    return `For an address-related ${serviceName}, address proof is usually mandatory. If you do not have an accepted address proof, that specific update cannot proceed yet. You would first need to arrange a valid address proof, and then the Jaagruk Bharat team can confirm the exact accepted document options.\n\n${copy.askMore}`;
+  }
+
+  return null;
 }
 
 function buildCompanyReply(
@@ -1821,9 +1933,16 @@ export async function POST(req: NextRequest) {
 
     const forcedService = forceServiceFromMessage(services, normalizedMessage);
 
+    const shouldKeepCurrentServiceForQuestion =
+      !!conversation.currentService &&
+      isConversationalQuestion(message) &&
+      !hasExplicitServiceMention(normalizedMessage) &&
+      category === "GENERAL";
+
     const service = forcedService
       ? forcedService
-      : isGenericFollowUp && conversation.currentService
+      : (isGenericFollowUp || shouldKeepCurrentServiceForQuestion) &&
+          conversation.currentService
         ? conversation.currentService
         : await resolveService(
           message,
@@ -1947,6 +2066,56 @@ export async function POST(req: NextRequest) {
         quickReplies: serviceHasEligibilityCriteria(service)
           ? ["Eligibility", "Documents", "Process", "Fees"]
           : ["Documents", "Process", "Fees"],
+      });
+    }
+
+    // If the message is a question, answer via AI before any structured intent handler.
+    // APPLY is excluded — it is an explicit action, not a question.
+    if (isConversationalQuestion(message) && detectedIntent !== "APPLY") {
+      const guardedReply = buildQuestionGuardReply(
+        language,
+        service,
+        normalizedMessage,
+        copy
+      );
+
+      if (guardedReply) {
+        return NextResponse.json({
+          reply: guardedReply,
+          service,
+          conversation: {
+            ...nextConversation,
+            stage: "ASK_USER_INTENT",
+          },
+          quickReplies: quickRepliesForStage("ASK_USER_INTENT", service),
+        });
+      }
+
+      const serviceContext = [
+        service.description || "",
+        service.eligibilitySummary?.join("\n") || "",
+        service.documentsSummary?.join("\n") || "",
+        service.process || "",
+      ]
+        .filter(Boolean)
+        .join("\n");
+
+      const aiReply = await generateAIResponse({
+        message,
+        service,
+        intent: detectedIntent,
+        extraContent: serviceContext,
+        language,
+      });
+
+      return NextResponse.json({
+        reply: aiReply,
+        service,
+        conversation: {
+          ...nextConversation,
+          stage: "ASK_USER_INTENT",
+        },
+        quickReplies: quickRepliesForStage("ASK_USER_INTENT", service),
       });
     }
 

@@ -1,6 +1,7 @@
 // lib/ai.ts
 
 import Groq from "groq-sdk";
+import { extractApplyLink } from "./chatbot";
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -20,6 +21,7 @@ export async function generateAIResponse({
 }: any) {
   try {
     const isGeneral = !service;
+    const applyLink = extractApplyLink(service || null);
 
     const prompt = isGeneral ? `
 You are Jaagruk Bharat AI Assistant.
@@ -35,9 +37,13 @@ User Question: ${message}
 You are Jaagruk Bharat AI Assistant.
 
 STRICT RULES:
-- ONLY promote Jaagruk Bharat services.
-- DO NOT mention other websites.
-- Keep answers short and conversational.
+- Answer only from the provided service context and broadly reliable government-service knowledge.
+- Do not invent ages, timelines, prices, document alternatives, or eligibility rules that are not supported by the provided context.
+- If the user says they do not have a required document, proof, vehicle, RC, or other prerequisite, clearly say the service cannot proceed until that requirement is available.
+- If the context supports acceptable alternatives, mention them. Otherwise say the exact accepted alternatives will be confirmed by the support team.
+- For HSRP: without a registered vehicle and RC details, the booking cannot proceed.
+- For Aadhaar Update: address proof is needed for address-related updates; without it, that specific update cannot proceed until an accepted proof document is arranged.
+- Keep the answer factual, direct, and short.
 - Reply in ${language}.
 
 User: ${message}
@@ -51,7 +57,7 @@ Extra Info:
 ${limitText(extraContent)}
 
 End with:
-👉 Apply here: ${service?.link || "https://www.jaagrukbharat.com"}
+👉 Apply here: ${applyLink}
 `;
 
     const completion = await groq.chat.completions.create({
