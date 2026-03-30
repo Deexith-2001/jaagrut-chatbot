@@ -35,5 +35,10 @@ export function normalizeUserText(text: string) {
     .replace(/renew/g, "renewal")
     .replace(/\bpricing\b|\brates\b|\brate\b|\bhow much\b|\btariff\b|\bkitna\b|fee|charge|price|cost/g, "fees")
     .replace(/track|tracking/g, "status")
-    .replace(/\b(get|make)\b/g, "new");
+    // Keep generic questions like "what services i get" intact.
+    // Map only service-action phrases such as "get pan" -> "new pan".
+    .replace(
+      /\b(get|make)\s+(new\s+)?(pan|aadhaar|passport|voter|license|licence|hsrp|certificate|card)\b/g,
+      "new $3"
+    );
 }
