@@ -2075,9 +2075,21 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // If the message is a question, answer via AI before any structured intent handler.
-    // APPLY is excluded — it is an explicit action, not a question.
-    if (isConversationalQuestion(message) && detectedIntent !== "APPLY") {
+    const shouldUseStructuredIntentReply = [
+      "ELIGIBILITY",
+      "DOCUMENTS",
+      "PROCESS",
+      "FEES",
+      "STATUS",
+    ].includes(detectedIntent);
+
+    // Route only open-ended questions through AI. Structured intents like fees and
+    // documents should stay deterministic so the model does not override known data.
+    if (
+      isConversationalQuestion(message) &&
+      detectedIntent !== "APPLY" &&
+      !shouldUseStructuredIntentReply
+    ) {
       const guardedReply = buildQuestionGuardReply(
         language,
         service,
