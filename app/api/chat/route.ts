@@ -328,6 +328,7 @@ function isGlobalServiceCatalogQuestion(text: string) {
   const asksProvideCapability =
     normalized.includes("provide") ||
     normalized.includes("offer") ||
+    normalized.includes("get") ||
     normalized.includes("help with") ||
     normalized.includes("can you do");
   const asksCatalog =
@@ -348,6 +349,9 @@ function isGlobalServiceCatalogQuestion(text: string) {
     normalized.includes("what services can you provide") ||
     normalized.includes("what services can you provide me") ||
     normalized.includes("what services you can provide me") ||
+    normalized.includes("what services i get") ||
+    normalized.includes("what services i get here") ||
+    normalized.includes("what services can i get") ||
     normalized.includes("which services do you provide") ||
     normalized.includes("what are the services available") ||
     normalized.includes("show services") ||
