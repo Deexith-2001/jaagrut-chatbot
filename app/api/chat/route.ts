@@ -261,8 +261,14 @@ function resolveDetectedIntent(message: string, normalizedMessage: string): Chat
     raw.includes("fees") ||
     raw.includes("fee") ||
     raw.includes("charges") ||
+    raw.includes("pricing") ||
     raw.includes("price") ||
-    raw.includes("cost")
+    raw.includes("cost") ||
+    raw.includes("rates") ||
+    raw.includes("rate") ||
+    raw.includes("how much") ||
+    raw.includes("tariff") ||
+    raw.includes("kitna")
   ) {
     return "FEES";
   }

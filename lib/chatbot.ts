@@ -140,7 +140,7 @@ const intentKeywordMap: Array<{ intent: ChatIntent; keywords: string[] }> = [
   },
   { intent: "DOCUMENTS", keywords: ["document", "documents", "proof", "required"] },
   { intent: "PROCESS", keywords: ["process", "procedure", "steps", "how"] },
-  { intent: "FEES", keywords: ["fees", "fee", "charges", "price", "cost"] },
+  { intent: "FEES", keywords: ["fees", "fee", "charges", "pricing", "price", "cost", "rates", "rate", "how much", "tariff", "kitna"] },
   { intent: "STATUS", keywords: ["status", "track", "tracking", "progress", "how long", "kitna time", "kitne din", "kab tak", "delivery", "timeline"] },
   { intent: "APPLY", keywords: ["apply", "link", "yes"] },
   { intent: "NEW", keywords: ["new", "fresh", "first time"] },

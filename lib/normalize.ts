@@ -33,7 +33,7 @@ export function normalizeUserText(text: string) {
     .replace(/lost|missing|duplicate/g, "reprint")
     .replace(/correction|change|modify|galat|sudhar|sudhaar|wrong/g, "update")
     .replace(/renew/g, "renewal")
-    .replace(/fee|charge|price|cost/g, "fees")
+    .replace(/\bpricing\b|\brates\b|\brate\b|\bhow much\b|\btariff\b|\bkitna\b|fee|charge|price|cost/g, "fees")
     .replace(/track|tracking/g, "status")
     .replace(/\b(get|make)\b/g, "new");
 }
