@@ -1,5 +1,12 @@
 const contentCache: Record<string, string> = {};
 
+function splitUrlList(rawUrls: string) {
+  return (rawUrls || "")
+    .split(/[\n,|;]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 function toDownloadableTextUrl(url: string) {
   if (!url) return url;
 
@@ -74,4 +81,25 @@ export async function fetchContent(url: string, query: string) {
     console.error("Content fetch error:", err);
     return "";
   }
+}
+
+export async function fetchContentFromUrls(urls: string, query: string) {
+  const urlList = splitUrlList(urls).slice(0, 4);
+  if (!urlList.length) return "";
+
+  const chunks = await Promise.all(
+    urlList.map(async (url) => {
+      const content = await fetchContent(url, query);
+      return content.trim();
+    })
+  );
+
+  const merged = chunks
+    .filter(Boolean)
+    .join("\n")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  return [...new Set(merged)].slice(0, 8).join("\n");
 }

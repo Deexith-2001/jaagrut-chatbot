@@ -11,6 +11,29 @@ export function detectCompanyIntent(text: string) {
   if (text.includes("about jaagruk") || text.includes("what is jaagruk"))
     return "ABOUT";
 
+  // "what benefits do I get from you", "what are your advantages"
+  if (
+    referencesCompany &&
+    (text.includes("benefit") ||
+      text.includes("advantage") ||
+      text.includes("what do i get") ||
+      text.includes("why use"))
+  )
+    return "BENEFITS";
+
+  // "you can only assist in X", "are you only for X"
+  if (
+    referencesCompany &&
+    (text.includes("only assist") ||
+      text.includes("only help") ||
+      text.includes("only provide") ||
+      text.includes("only for") ||
+      text.includes("only do") ||
+      text.includes("are you only") ||
+      text.includes("can you only"))
+  )
+    return "SCOPE";
+
   if (
     text.includes("trust") ||
     text.includes("safe") ||

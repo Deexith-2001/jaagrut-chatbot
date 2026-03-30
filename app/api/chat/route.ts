@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateAIResponse } from "../../../lib/ai";
+import { generateAIResponse, generateGroundedIntentResponse } from "../../../lib/ai";
 import {
   ChatIntent,
   ConversationStage,
@@ -17,7 +17,7 @@ import {
 } from "../../../lib/chatbot";
 import { COMPANY_INFO } from "../../../lib/company";
 import { detectCompanyIntent } from "../../../lib/companyIntent";
-import { fetchContent } from "../../../lib/content";
+import { fetchContentFromUrls } from "../../../lib/content";
 import { detectLanguage } from "../../../lib/language";
 import { normalizeUserText } from "../../../lib/normalize";
 import { detectServiceWithAI } from "../../../lib/serviceAI";
@@ -323,9 +323,31 @@ function isBareCategoryQuery(
 
 function isGlobalServiceCatalogQuestion(text: string) {
   const normalized = text.toLowerCase();
+  const asksServiceList =
+    normalized.includes("service") || normalized.includes("services");
+  const asksProvideCapability =
+    normalized.includes("provide") ||
+    normalized.includes("offer") ||
+    normalized.includes("help with") ||
+    normalized.includes("can you do");
+  const asksCatalog =
+    normalized.includes("what") ||
+    normalized.includes("which") ||
+    normalized.includes("show") ||
+    normalized.includes("all") ||
+    normalized.includes("list");
+
+  if (asksServiceList && asksProvideCapability && asksCatalog) {
+    return true;
+  }
+
   return (
     normalized.includes("what are the services you provide") ||
     normalized.includes("what services do you provide") ||
+    normalized.includes("what services you can provide") ||
+    normalized.includes("what services can you provide") ||
+    normalized.includes("what services can you provide me") ||
+    normalized.includes("what services you can provide me") ||
     normalized.includes("which services do you provide") ||
     normalized.includes("what are the services available") ||
     normalized.includes("show services") ||
@@ -679,6 +701,24 @@ function isWeakDocumentsText(text: string) {
     "mobile number",
     "aadhaar number",
   ].some((pattern) => normalized.includes(pattern));
+}
+
+function isSpecificDocumentDetailQuestion(normalizedMessage: string) {
+  return [
+    "what kind",
+    "which",
+    "acceptable",
+    "valid",
+    "address proof",
+    "id proof",
+    "identity proof",
+    "bank statement",
+    "electricity bill",
+    "ration card",
+    "passport",
+    "license",
+    "licence",
+  ].some((phrase) => normalizedMessage.includes(phrase));
 }
 
 function looksLikeUsefulProcessText(text: string) {
@@ -1125,6 +1165,47 @@ function buildCompanyReply(
   }
 
   return null;
+}
+
+function buildBenefitsReply(
+  language: ConversationState["language"],
+  copy: CopyBlock
+) {
+  const benefits = [
+    "no office visits — apply from anywhere, anytime",
+    "expert-guided filing to avoid common form mistakes",
+    "real support team to help from start to finish",
+    "single window across PAN, Aadhaar, Passport, Driving License, Certificates, Government Schemes, Business Registration and more",
+    "secure document handling with no unnecessary sharing",
+    "dedicated help if OTP, portal, or verification issues come up",
+  ];
+
+  if (language === "Hindi") {
+    return `Jaagruk Bharat पर आपको ये फायदे मिलते हैं:\n\n${bulletLines(benefits)}\n\n${copy.servicesPrompt}`;
+  }
+  if (language === "Hinglish") {
+    return `Jaagruk Bharat par aapko ye faayde milte hain:\n\n${bulletLines(benefits)}\n\n${copy.servicesPrompt}`;
+  }
+  if (language === "Telugu") {
+    return `Jaagruk Bharat వద్ద మీకు ఈ ప్రయోజనాలు ఉంటాయి:\n\n${bulletLines(benefits)}\n\n${copy.servicesPrompt}`;
+  }
+  return `Here's what you get with Jaagruk Bharat:\n\n${bulletLines(benefits)}\n\n${copy.servicesPrompt}`;
+}
+
+function buildScopeReply(
+  language: ConversationState["language"],
+  copy: CopyBlock
+) {
+  if (language === "Hindi") {
+    return `नहीं, हम सिर्फ एक service तक सीमित नहीं हैं। Jaagruk Bharat पर हम PAN Card, Aadhaar, Passport, Driving License, Voter ID, Certificates, Government Schemes, Business Registration aur bahut saari services mein help karte hain.\n\n${copy.servicesPrompt}`;
+  }
+  if (language === "Hinglish") {
+    return `Nahi, hum sirf ek service tak limited nahi hain. Jaagruk Bharat par hum PAN Card, Aadhaar, Passport, Driving License, Voter ID, Certificates, Government Schemes, Business Registration aur bahut saari services mein help karte hain.\n\n${copy.servicesPrompt}`;
+  }
+  if (language === "Telugu") {
+    return `లేదు, మేము ఒక్క service కే పరిమితం కాదు. Jaagruk Bharat లో మేము PAN Card, Aadhaar, Passport, Driving License, Voter ID, Certificates, Government Schemes, Business Registration మరియు మరిన్ని services లో సహాయం చేస్తాం.\n\n${copy.servicesPrompt}`;
+  }
+  return `No, we are not limited to one service. Through Jaagruk Bharat, we help with PAN Card, Aadhaar, Passport, Driving License, Voter ID, Certificates, Government Schemes, Business Registration, and many more.\n\n${copy.servicesPrompt}`;
 }
 
 type CopyBlock = {
@@ -1841,6 +1922,22 @@ export async function POST(req: NextRequest) {
     }
 
     if (shouldHandleAsCompanyQuestion(companyIntent, normalizedMessage, detectedIntent, !!conversation.currentService)) {
+      if (companyIntent === "BENEFITS") {
+        return NextResponse.json({
+          reply: buildBenefitsReply(language, copy),
+          conversation: { ...conversation, currentIntent: "GENERAL" },
+          quickReplies: ["PAN Card", "Aadhaar", "Passport", "Driving License"],
+        });
+      }
+
+      if (companyIntent === "SCOPE") {
+        return NextResponse.json({
+          reply: buildScopeReply(language, copy),
+          conversation: { ...conversation, currentIntent: "GENERAL" },
+          quickReplies: ["PAN Card", "Aadhaar", "Passport", "Driving License"],
+        });
+      }
+
       const directReply = buildCompanyReply(
         companyIntent!,
         language,
@@ -2118,11 +2215,25 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .join("\n");
 
+      const dynamicFaqContext = service.faqUrl
+        ? await fetchContentFromUrls(service.faqUrl, message)
+        : "";
+      const dynamicBodyContext = service.bodyUrl
+        ? await fetchContentFromUrls(service.bodyUrl, message)
+        : "";
+      const enrichedServiceContext = [
+        serviceContext,
+        dynamicFaqContext,
+        dynamicBodyContext,
+      ]
+        .filter(Boolean)
+        .join("\n");
+
       const aiReply = await generateAIResponse({
         message,
         service,
         intent: detectedIntent,
-        extraContent: serviceContext,
+        extraContent: enrichedServiceContext,
         language,
       });
 
@@ -2151,21 +2262,27 @@ export async function POST(req: NextRequest) {
 
     if (detectedIntent === "DOCUMENTS") {
       const faq = service.faqUrl
-        ? await fetchContent(service.faqUrl, message)
+        ? await fetchContentFromUrls(service.faqUrl, message)
         : "";
       const bodyDocs = service.bodyUrl
-        ? await fetchContent(service.bodyUrl, "documents required proof eligibility")
+        ? await fetchContentFromUrls(
+            service.bodyUrl,
+            `${message} documents required proof eligibility`
+          )
         : "";
       const docsSource = topLines(`${faq}\n${bodyDocs}`);
       const structuredDetails = service.documentsSummary?.length
         ? bulletList(service.documentsSummary)
         : "";
+      const sourceDetails = isWeakDocumentsText(docsSource) ? "" : docsSource;
+      const includeSourceDetails =
+        Boolean(sourceDetails) &&
+        (isSpecificDocumentDetailQuestion(normalizedMessage) || !structuredDetails);
       const details = structuredDetails
-        ? structuredDetails
-        : shortText(
-            isWeakDocumentsText(docsSource) ? "" : docsSource,
-            safeDocumentsFallback(language, serviceName)
-          );
+        ? includeSourceDetails
+          ? `${structuredDetails}\n\nAdditional details:\n${sourceDetails}`
+          : structuredDetails
+        : shortText(sourceDetails, safeDocumentsFallback(language, serviceName));
       const textFields =
         service.textFieldsSummary?.length
           ? language === "Hindi"
@@ -2177,9 +2294,21 @@ export async function POST(req: NextRequest) {
                 : `\n\nRequired details:\n\n${bulletList(service.textFieldsSummary)}`
           : "";
 
+      const groundedDocsReply = await generateGroundedIntentResponse({
+        message,
+        service,
+        intent: "DOCUMENTS",
+        language,
+        structuredContent: `${details}${textFields}`,
+        sourceContent: docsSource,
+      });
+
+      const docsReplyBody =
+        groundedDocsReply || `${copy.docsLabel} for ${serviceName}:\n\n${details}${textFields}`;
+
       return NextResponse.json({
         reply: withOptionalApplyLink(
-          `${copy.docsLabel} for ${serviceName}:\n\n${details}${textFields}\n\n${copy.askApply}`,
+          `${docsReplyBody}\n\n${copy.askApply}`,
           service,
           false
         ),
@@ -2194,7 +2323,10 @@ export async function POST(req: NextRequest) {
         service.processSteps?.length ? service.processSteps.join("\n") : service.process || ""
       );
       const bodyProcess = service.bodyUrl
-        ? await fetchContent(service.bodyUrl, "process procedure steps apply")
+        ? await fetchContentFromUrls(
+            service.bodyUrl,
+            `${message} process procedure steps apply`
+          )
         : "";
       const processSource = looksLikeUsefulProcessText(rawProcess)
         ? rawProcess
@@ -2226,9 +2358,21 @@ export async function POST(req: NextRequest) {
                 : "You share the details, upload documents, and our team helps move the application forward."
           );
 
+      const groundedProcessReply = await generateGroundedIntentResponse({
+        message,
+        service,
+        intent: "PROCESS",
+        language,
+        structuredContent: process,
+        sourceContent: bodyProcess,
+      });
+
+      const processReplyBody =
+        groundedProcessReply || `${copy.processLabel} for ${serviceName}:\n\n${process}`;
+
       return NextResponse.json({
         reply: withOptionalApplyLink(
-          `${copy.processLabel} for ${serviceName}:\n\n${process}\n\n${copy.askApply}`,
+          `${processReplyBody}\n\n${copy.askApply}`,
           service,
           false
         ),

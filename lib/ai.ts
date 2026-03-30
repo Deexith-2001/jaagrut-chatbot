@@ -71,3 +71,59 @@ End with:
     return "⚠️ Unable to generate response right now.";
   }
 }
+
+export async function generateGroundedIntentResponse({
+  message,
+  service,
+  intent,
+  language,
+  structuredContent,
+  sourceContent,
+}: any) {
+  try {
+    if (!service) return "";
+
+    const prompt = `
+You are Jaagruk Bharat AI Assistant.
+
+TASK:
+- Write a natural, human-sounding reply for the user.
+- Reply ONLY using the supplied context.
+- Do not invent rules, alternatives, prices, timelines, or eligibility.
+- If exact detail is missing, say it clearly and politely.
+- Keep it practical and concise.
+- Reply in ${language}.
+
+FORMAT RULES:
+- For DOCUMENTS intent: give a short friendly line, then bullets for required/accepted proofs and details when present.
+- For PROCESS intent: explain steps in a simple numbered list.
+- Do not mention "source", "context", "sheet", or "document parsing".
+- Do not include apply link.
+
+User message:
+${limitText(message, 500)}
+
+Service:
+${limitText(service?.title || "", 200)}
+
+Intent:
+${intent}
+
+Structured details:
+${limitText(structuredContent || "", 1800)}
+
+Drive/FAQ extracted details:
+${limitText(sourceContent || "", 1800)}
+`;
+
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.1-8b-instant",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    return completion.choices?.[0]?.message?.content?.trim() || "";
+  } catch (err) {
+    console.error("Grounded intent AI error:", err);
+    return "";
+  }
+}
