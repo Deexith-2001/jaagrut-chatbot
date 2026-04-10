@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?><sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="381" uniqueCount="235"><si><t>Service</t></si><si><t>Documents Required</t></si><si><t>Text Fields</t></si><si><t>Column 1</t></si><si><t>Aadhaar Address Update</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Address Proof</t></si><si><t>Whatsapp Number</t></si><si><t>Aadhaar Deactivation</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo</t></si><si><t>Aadhaar NPCI Link</t></si><si><t>Aadhaar Card Self-Attested (Front), Aadhaar Card Self-Attested (Back), Passport Photo, Bank Passbook Front Page</t></si><si><t>State Name, Whatsapp Number</t></si><si><t>Aadhaar PAN Link</t></si><si><t>Whatsapp Number, Aadhaar Number, PAN Number, Aadhaar Linked Phone Number</t></si><si><t>Aadhaar PVC Card</t></si><si><t>Whatsapp Number, Aadhaar Number, Aadhaar Linked Phone Number</t></si><si><t>Aadhaar Seeding With Bank Account</t></si><si><t>Aadhaar Card Self-Attested (Front), Aadhaar Card Self-Attested (Back), Bank Passbook Front Page</t></si><si><t>ABHA</t></si><si><t>Aadhaar Number, Aadhaar Linked Phone Number, Whatsapp Number</t></si><si><t>Affidavit Creation</t></si><si><t>APAAR ID</t></si><si><t>Whatsapp Number, Registration Number, Year of Admission, Institution Name</t></si><si><t>Atal Pension Yojana</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Bank Passbook Front Page, PAN Card</t></si><si><t>Whatsapp Number, Nominee Phone No, Nominee Relation, Nominee Name, DOB, Marital Status</t></si><si><t>&quot;{
+  &quot;&quot;marital_status&quot;&quot;: [&quot;&quot;Single / Unmarried&quot;&quot;, &quot;&quot;Married&quot;&quot;, &quot;&quot;Widowed&quot;&quot;, &quot;&quot;Divorced&quot;&quot;, &quot;&quot;Separated&quot;&quot;]
+}
+&quot;</t></si><si><t>Ayushman</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Live Current Photo</t></si><si><t>Whatsapp Number, Caste</t></si><si><t>{
+  &quot;caste&quot;:[&quot;General (UR)&quot;, &quot;OBC&quot;, &quot;SC&quot;, &quot;ST&quot;]
+}</t></si><si><t>Caste Certificate Haryana</t></si><si><t>Family Card</t></si><si><t>Whatsapp Number, Aadhaar Linked Phone Number</t></si><si><t>Caste Certificate Maharashtra</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Signature on White Paper, Caste Certificate (Parents/Siblings), School Leaving Cert (Showing Caste)</t></si><si><t>Color Coded Fuel Sticker</t></si><si><t>Rear Laser Number, Front Laser Number, Rear Number Plate, Front Number Plate, RC Photo</t></si><si><t>Whatsapp Number, Email ID, Aadhaar Linked Phone Number</t></si><si><t>Cyber Crime Complaint</t></si><si><t>Incident Proof</t></si><si><t>Divyangjan Railway Card</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo, Disability Proof, DOB Proof (Voter/PAN)</t></si><si><t>Whatsapp Number, State Name, Nearest Railway Station</t></si><si><t>DL Address Change</t></si><si><t>Aadhaar Card Self-Attested (Back), Aadhaar Card Self-Attested (Front), Driving License Self-Attested (Back), Driving License Self-Attested (Front), Passport Photo, Signature on White Paper</t></si><si><t>Domicile Certificate</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo, Family Card</t></si><si><t>Driving License Aadhaar Link</t></si><si><t>Whatsapp Number, State Name, Aadhaar Linked Phone Number, Aadhaar Number, Driving License Number</t></si><si><t>DSC Registration</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo</t></si><si><t>State Name, Aadhaar Linked Phone Number, Whatsapp Number, DSC Validity</t></si><si><t>Duplicate Driving License</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, FIR Photo/Damaged License, Driving License Self-Attested (Front)</t></si><si><t>e-Shram</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Bank Passbook Front Page</t></si><si><t>Farmer ID Creation</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Land Ownership Proof</t></si><si><t>FASTag KYV</t></si><si><t>RC Back Image, RC Front Image, FASTag Sticker From Inside Windshield, Vehicle Side Photo, Vehicle Front Photo</t></si><si><t>FASTag One Year Pass</t></si><si><t>FSSAI Food License Registration</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, PAN Card, Address Proof, Passport Photo, No Objection Certificate</t></si><si><t>Whatsapp Number, License Category, Business Category</t></si><si><t>&quot;{
+  &quot;&quot;license_category&quot;&quot;:[
+    &quot;&quot;Basic Registration (Turnover up to ₹12 Lakhs)&quot;&quot;,
+    &quot;&quot;State License (₹12 Lakhs – ₹20 Crores)&quot;&quot;,
+    &quot;&quot;Central License (Above ₹20 Crores / Multi-State)&quot;&quot;,
+  ],
+  &quot;&quot;business_category&quot;&quot;: [
+    &quot;&quot;Manufacturer&quot;&quot;,
+    &quot;&quot;Restaurant / Food Service&quot;&quot;,
+    &quot;&quot;Retailer&quot;&quot;,
+    &quot;&quot;Wholesaler&quot;&quot;,
+    &quot;&quot;Distributor&quot;&quot;,
+    &quot;&quot;Caterer&quot;&quot;,
+    &quot;&quot;Transporter&quot;&quot;,
+    &quot;&quot;Storage&quot;&quot;,
+    &quot;&quot;E-commerce FBO&quot;&quot;,
+    &quot;&quot;Importer&quot;&quot;,
+    &quot;&quot;Food Vending Establishment&quot;&quot;
+  ],
+  
+}
+&quot;</t></si><si><t>FSSAI Food License Renewal</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, PAN Card, Current/Expired FSSAI License</t></si><si><t xml:space="preserve">{
+  &quot;license_category&quot;:[
+    &quot;Basic Registration (Turnover up to ₹12 Lakhs)&quot;,
+    &quot;State License (₹12 Lakhs – ₹20 Crores)&quot;,
+    &quot;Central License (Above ₹20 Crores / Multi-State)&quot;,
+  ],
+  &quot;business_category&quot;: [
+    &quot;Manufacturer&quot;,
+    &quot;Restaurant / Food Service&quot;,
+    &quot;Retailer&quot;,
+    &quot;Wholesaler&quot;,
+    &quot;Distributor&quot;,
+    &quot;Caterer&quot;,
+    &quot;Transporter&quot;,
+    &quot;Storage&quot;,
+    &quot;E-commerce FBO&quot;,
+    &quot;Importer&quot;,
+    &quot;Food Vending Establishment&quot;
+  ],
+  
+}
+</t></si><si><t>FTI TTP Registration</t></si><si><t>Passport Photo</t></si><si><t>State Name, Age, Whatsapp Number, Email ID</t></si><si><t>GST Registration</t></si><si><t>State Name, Aadhaar Linked Phone Number, Whatsapp Number, Trade Name/Business Name, Business Constitution, Business Activity</t></si><si><t xml:space="preserve">{
+    &quot;business_constitution&quot;:  [
+        &quot;Proprietorship&quot;,
+        &quot;Partnership&quot;,
+        &quot;Limited Liability Partnership (LLP)&quot;,
+        &quot;Private Limited Company&quot;,
+        &quot;Public Limited Company&quot;,
+        &quot;One Person Company (OPC)&quot;,
+        &quot;Hindu Undivided Family (HUF)&quot;,
+        &quot;Society&quot;,
+        &quot;Trust&quot;,
+        &quot;Section 8 Company&quot;,
+        &quot;Government Department&quot;,
+        &quot;Public Sector Undertaking (PSU)&quot;,
+        &quot;Local Authority&quot;,
+        &quot;Statutory Body&quot;,
+        &quot;Association of Persons (AOP) / Body of Individuals (BOI)&quot;,
+        &quot;Others&quot;
+      ],
+    &quot;business_activity&quot;: [
+        &quot;Manufacturer&quot;,
+        &quot;Wholesaler&quot;,
+        &quot;Retailer&quot;,
+        &quot;Supplier of Services&quot;,
+        &quot;Works Contract&quot;,
+        &quot;Export&quot;,
+        &quot;Import&quot;,
+        &quot;Warehouse / Depot&quot;,
+        &quot;Leasing Business&quot;,
+        &quot;Office / Sale Office&quot;,
+        &quot;Bonded Warehouse&quot;,
+        &quot;Recipient of Goods or Services&quot;,
+        &quot;E-Commerce Operator&quot;,
+        &quot;Others&quot;
+      ]
+}
+</t></si><si><t>Haryana EWS Certificate</t></si><si><t>Haryana Family Card</t></si><si><t>Area of Residence, Aadhaar Linked Phone Number, Whatsapp Number</t></si><si><t>HSRP Number Plate</t></si><si><t>RC Photo</t></si><si><t>Income Certificate HR</t></si><si><t>Income Certificate MH</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo, Talathi Report, Signature on White Paper, Ration Card</t></si><si><t>Whatsapp Number, Caste, Annual Income</t></si><si><t>International Driving License</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Indian Driving License (Front), Indian Driving License (Back), Photo of Passport (Front), Photo of Passport (Back), Disability Proof</t></si><si><t>Whatsapp Number, Vehicle Type</t></si><si><t xml:space="preserve">{
+  &quot;vehicle_type&quot;:[
+    &quot;Bike with gear&quot;,
+     &quot;Scooter (no gear)&quot;,
+     &quot;bike + scooter&quot;,
+     &quot;Private car&quot;,
+     &quot;Commercial taxi&quot;,
+     &quot;Truck / Bus&quot;
+  ]
+}
+</t></si><si><t>Kashi Vishwanath Darshan</t></si><si><t>Aadhaar Of Each Devotee, ID Proof Of Each Devotee</t></si><si><t>Labour Card</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Bank Passbook Front Page, Passport Photo, Ration Card, 90 Days Work Certificate</t></si><si><t>Ladli Behena Yojana</t></si><si><t>Whatsapp Number, Aadhaar Number, Father/Husband's Aadhaar Number, Caste</t></si><si><t>Learners License</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Signature on White Paper, Disability Proof</t></si><si><t>Whatsapp Number, Mode of Test, License Category</t></si><si><t>{
+  &quot;license_category&quot;:[
+    &quot;Bike with gear&quot;,
+     &quot;Scooter (no gear)&quot;,
+     &quot;Bike + Car&quot;,
+     &quot;Private car&quot;,
+     &quot;Commercial taxi&quot;,
+     &quot;Truck / Bus&quot;
+  ]
+  &quot;mode_of_test&quot;: [
+    &quot;Computer Based Test (RTO)&quot;,
+&quot;Online From Home (if applicable)&quot;
+  ],
+}</t></si><si><t>Legal Heir Certificate</t></si><si><t>Aadhaar Card (of deceased), Aadhaar Photo of Legal Heir, Crematorium Reciept, Ration Card, Notarized Application Photo, Photo of Light Bill, Photo of Death Certificate</t></si><si><t>Whatsapp Number, State Name</t></si><si><t>LLP Registration</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo, PAN Card, Electricity/Water/Gas Bill, NOC By Landlord, Rent Agreement, Company Digital Signature Certificate</t></si><si><t>State Name, Aadhaar Linked Phone Number, Whatsapp Number</t></si><si><t>LPG eKYC</t></si><si><t>Mahakaleshwar Darshan</t></si><si><t>Aadhaar Of Each Devotee, ID Proof Of Each Devotee, Passport Photo</t></si><si><t>MSRTC Bus Booking</t></si><si><t>New PAN Card</t></si><si><t>Passport Photo, Signature on White Paper, Aadhaar Card Self-Attested (Back), Aadhaar Card Self-Attested (Front)</t></si><si><t>New Passport Application</t></si><si><t>Whatsapp Number, Passport Delivery Address, Educational Qualification, Fathers Name, Full Name (as per Govt ID), Occupation Details, DOB, Nearby Police Station, Aadhaar Number, PAN Number, Email ID</t></si><si><t>New Voter Card</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Voter Card Of Any Family Member</t></si><si><t>PAN Card Correction</t></si><si><t>Passport Photo, PAN Card, Signature on White Paper, Aadhaar Card Self-Attested (Back), Aadhaar Card Self-Attested (Front)</t></si><si><t>Passport Renewal</t></si><si><t>Whatsapp Number, Passport Delivery Address, Fathers Name, Full Name (as per Govt ID), DOB, Nearby Police Station, Aadhaar Number, PAN Number, Email ID, Current Passport Number, Full Name as Per Passport</t></si><si><t>Permanent Driving License</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo, Learners License, Signature on White Paper</t></si><si><t>PM Internship Registration</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Latest Educational Certificate, Latest CV</t></si><si><t>PM Kisan eKYC</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo</t></si><si><t>PM Kisan Samman Nidhi</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Land Ownership Proof</t></si><si><t>Whatsapp Number, Marital Status, Caste</t></si><si><t xml:space="preserve">{
+  &quot;marital_status&quot;: [&quot;Single / Unmarried&quot;, &quot;Married&quot;, &quot;Widowed&quot;, &quot;Divorced&quot;, &quot;Separated&quot;]
+  &quot;caste&quot;:[&quot;General (UR)&quot;, &quot;OBC&quot;, &quot;SC&quot;, &quot;ST&quot;]
+}
+</t></si><si><t>PM Ujjwala Yojana</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Bank Passbook Front Page, Passport Photo, BPL Ration Card</t></si><si><t>Whatsapp Number, Email ID</t></si><si><t>PMJJBY</t></si><si><t>Whatsapp Number, Nominee Phone No, Nominee Relation, Nominee Name</t></si><si><t>PMSBY</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Bank Passbook Front Page</t></si><si><t>Reprint PAN</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, PAN Card</t></si><si><t>Resident Certificate Haryana Online Apply</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Family Card</t></si><si><t>Resident Certificate MH Apply Online</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Signature on White Paper, &quot;DOB Proof (Birth Cert, School Leaving Cert, Bonafide Cert)&quot;, Ration Card, Photo of Light Bill</t></si><si><t>Sai Baba Darshan</t></si><si><t>Sauchalay Yojana</t></si><si><t>Whatsapp Number, Area of Residence, Caste, Panchayat Name</t></si><si><t>Senior Citizen Card - Assam</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Voter Card Back Photo, Voter Card Front Photo</t></si><si><t>Nearby Post Office, Nearby Police Station, Emergency Contact Name, Emergency Contact Number, Whatsapp Number</t></si><si><t>Senior Citizen Card - KA</t></si><si><t>Emergency Contact Name, Emergency Contact Number, Whatsapp Number</t></si><si><t>Senior Citizen Card - Maharashtra</t></si><si><t>Voter Card Front Photo, Voter Card Back Photo, Aadhaar Back Photo, Aadhaar Front Photo, Passport Photo, Signature on White Paper, Photo of Light Bill, School Leaving Certificate</t></si><si><t>Shree Ram Janmabhoomi</t></si><si><t>Srisaila Devasthanam</t></si><si><t>UDID</t></si><si><t>Aadhaar Front Photo, Aadhaar Back Photo, Passport Photo, Disability Proof, Signature on White Paper</t></si><si><t>UDYAM Certificate</t></si><si><t>Vaishno Devi Service</t></si><si><t>State Name, Travel Date, Whatsapp Number</t></si><si><t>Vehicle E-Challan</t></si><si><t>Whatsapp Number, Aadhaar Linked Phone Number, Registration Number</t></si><si><t>Vehicle RC Aadhaar Linking</t></si><si><t>Whatsapp Number, Registration Number, Aadhaar Linked Phone Number, Aadhaar Number, State Name, Name as per Aadhaar, RTO Office Name, RC Registration Date, RC Validity Date</t></si><si><t>Vehicle Tax</t></si><si><t>Aadhaar Back Photo, Aadhaar Front Photo, RC Front Image, RC Back Image</t></si><si><t>Verify GSTIN</t></si><si><t>Whatsapp Number, GSTIN Number</t></si><si><t>Vitthal Rukmini</t></si><si><t>Voter Aadhaar Linking</t></si><si><t>Voter Card Front Photo, Voter Card Back Photo, Aadhaar Front Photo, Aadhaar Back Photo</t></si><si><t>Voter Card Correction</t></si><si><t>Voter Card Back Photo, Voter Card Front Photo</t></si><si><t>Whatsapp Number, Correction Details</t></si><si><t>लाड़ली बहना योजना</t></si><si><t>DB Service Name</t></si><si><t>Category</t></si><si><t>Aadhaar Deactivation,</t></si><si><t>Identity Services</t></si><si><t>Aadhaar PAN Link,</t></si><si><t>Aadhaar PVC Card,</t></si><si><t>Aadhaar Seeding With Bank Account,</t></si><si><t>Financial Services</t></si><si><t>ABHA,</t></si><si><t>Health and Insurance Schemes</t></si><si><t>Affidavit Creation,</t></si><si><t>Complaints &amp; Legals</t></si><si><t>APAAR ID,</t></si><si><t>Education and Agriculture</t></si><si><t>Atal Pension Yojana,</t></si><si><t>Ayushman,</t></si><si><t>Caste Certificate Haryana,</t></si><si><t>Caste Certificate Maharashtra,</t></si><si><t>Color Coded Fuel Sticker,</t></si><si><t>Vehicle Related Services</t></si><si><t>Cyber Crime Complaint,</t></si><si><t>DL Address Change,</t></si><si><t>Driving License Aadhaar Link,</t></si><si><t>Driving License,</t></si><si><t>For MSMEs &amp; Enterprises</t></si><si><t>Duplicate Driving License,</t></si><si><t>e-Shram,</t></si><si><t>FASTag KYV,</t></si><si><t>FASTag One Year Pass,</t></si><si><t>FSSAI Food License Registration,</t></si><si><t>FSSAI Food License Renewal,</t></si><si><t>HSRP Number Plate,</t></si><si><t>Income Certificate HR,</t></si><si><t>Income Certificate MH,</t></si><si><t>International Driving License,</t></si><si><t>Kashi Vishwanath Darshan,</t></si><si><t>Pilgrimage &amp; Religious Services</t></si><si><t>Ladli Behena Yojana,</t></si><si><t>Legal Heir Certificate,</t></si><si><t>Mahakaleshwar Darshan,</t></si><si><t>MSRTC Bus Booking,</t></si><si><t>New PAN Card,</t></si><si><t>PAN Card Correction,</t></si><si><t>PM Internship Registration,</t></si><si><t>Govt Internships</t></si><si><t>PM Ujjwala Yojana,</t></si><si><t>PMJJBY,</t></si><si><t>PMSBY,</t></si><si><t>Resident Certificate Haryana Online Apply,</t></si><si><t>Resident Certificate MH Apply Online,</t></si><si><t>Sai Baba Darshan,</t></si><si><t>Sauchalay Yojana,</t></si><si><t>Srisaila Devasthanam,</t></si><si><t>UDID,</t></si><si><t>UDYAM Certificate,</t></si><si><t>Vehicle E-Challan,</t></si><si><t>Vehicle RC Aadhaar Linking,</t></si><si><t>Vehicle Tax,</t></si><si><t>Verify GSTIN,</t></si><si><t>Vitthal Rukmini,</t></si><si><t>Voter Aadhaar Linking,</t></si><si><t>लाड़ली बहना योजना,</t></si></sst>
