@@ -646,6 +646,35 @@ function shouldHandleAsCompanyQuestion(
   return !hasExplicitServiceMention(normalizedMessage) || companyIntent === "TRUST" || companyIntent === "COMPARISON";
 }
 
+function isEligibilityQuestion(raw: string) {
+  const hasEligibilitySignal =
+    raw.includes("eligibility") ||
+    raw.includes("eligible") ||
+    raw.includes("criteria") ||
+    raw.includes("who can apply") ||
+    raw.includes("can i apply") ||
+    raw.includes("can i still apply") ||
+    raw.includes("am i eligible") ||
+    raw.includes("what if i") ||
+    raw.includes("under 18") ||
+    raw.includes("below 18") ||
+    raw.includes("minor") ||
+    raw.includes("less than 18") ||
+    raw.includes("dont have 18") ||
+    raw.includes("don't have 18");
+
+  const hasQuestionContext =
+    raw.includes("?") ||
+    raw.includes("can i") ||
+    raw.includes("am i") ||
+    raw.includes("what if") ||
+    raw.includes("is it allowed") ||
+    raw.includes("allowed") ||
+    raw.includes("possible");
+
+  return hasEligibilitySignal && hasQuestionContext;
+}
+
 function isWeakProcessText(text: string) {
   const normalized = text.toLowerCase().trim();
   if (!normalized) return true;
@@ -1040,6 +1069,57 @@ function buildDrivingAgeEligibilityReply(
   }
 
   return `For ${learnerName}, here is the age rule:\n\n- Under 18, a regular/geared Driving License is usually not allowed.\n- In many states, at age 16+ (with parent/guardian consent), you may get a Learner License for a gearless two-wheeler (up to 50cc).\n- At 18+, you can apply for regular Learner and then Permanent License.\n\nIf you want, I can now guide your exact ${learnerName} documents, process, or fees.`;
+}
+
+function isPanMinorEligibilityQuestion(
+  normalizedMessage: string,
+  currentService: ServiceRecord | null,
+  currentCategory: ConversationState["currentCategory"]
+) {
+  const hasPanContext =
+    currentCategory === "PAN" ||
+    mapCategoryFromService(currentService) === "PAN" ||
+    normalizedMessage.includes("pan");
+
+  if (!hasPanContext) return false;
+
+  const hasAgeSignal =
+    normalizedMessage.includes("under 18") ||
+    normalizedMessage.includes("below 18") ||
+    normalizedMessage.includes("minor") ||
+    normalizedMessage.includes("less than 18") ||
+    normalizedMessage.includes("dont have 18") ||
+    normalizedMessage.includes("don't have 18") ||
+    /\b(?:16|17)\b/.test(normalizedMessage);
+
+  const hasEligibilitySignal =
+    normalizedMessage.includes("can i") ||
+    normalizedMessage.includes("can still apply") ||
+    normalizedMessage.includes("eligible") ||
+    normalizedMessage.includes("apply");
+
+  return hasAgeSignal && hasEligibilitySignal;
+}
+
+function buildPanMinorEligibilityReply(
+  language: ConversationState["language"],
+  service: ServiceRecord | null
+) {
+  const serviceName = service ? presentServiceName(service) : "New PAN Card";
+
+  if (language === "Hindi") {
+    return `हाँ, ${serviceName} के लिए 18 साल होना ज़रूरी नहीं है.\n\n- Minor भी PAN के लिए apply कर सकता है.\n- Minor application आमतौर पर parent या guardian के through की जाती है.\n- Parent/guardian details और supporting documents की ज़रूरत पड़ सकती है.\n- PAN issue होने के बाद, future में details update की जा सकती हैं अगर needed हो.\n\nअगर आप चाहें, मैं अभी minor PAN के documents, process, या apply steps बता सकता हूँ.`;
+  }
+
+  if (language === "Hinglish") {
+    return `Haan, ${serviceName} ke liye 18 years hona mandatory nahi hai.\n\n- Minor bhi PAN ke liye apply kar sakta hai.\n- Minor application usually parent ya guardian ke through ki jaati hai.\n- Parent/guardian details aur supporting documents ki zarurat pad sakti hai.\n- PAN issue hone ke baad future mein details update ki ja sakti hain if needed.\n\nAgar aap chaho, main abhi minor PAN ke documents, process, ya apply steps bata deta hoon.`;
+  }
+
+  if (language === "Telugu") {
+    return `అవును, ${serviceName} కోసం 18 సంవత్సరాలు పూర్తి కావాలి అనేది తప్పనిసరి కాదు.\n\n- Minor కూడా PAN కోసం apply చేయవచ్చు.\n- Minor application సాధారణంగా parent లేదా guardian ద్వారా చేస్తారు.\n- Parent/guardian details మరియు supporting documents అవసరం కావచ్చు.\n- PAN issue అయిన తర్వాత future లో details update చేయవచ్చు.\n\nమీకు కావాలంటే, నేను ఇప్పుడు minor PAN documents, process, లేదా apply steps చెబుతాను.`;
+  }
+
+  return `Yes, you can still apply for ${serviceName} even if you are under 18.\n\n- A minor can apply for a PAN card.\n- The application is usually made through a parent or legal guardian.\n- Parent or guardian details and supporting documents may be required.\n- If needed, the PAN details can be updated later.\n\nIf you want, I can now show the documents, process, or apply steps for a minor PAN application.`;
 }
 
 function buildQuestionGuardReply(
@@ -1840,6 +1920,7 @@ async function resolveService(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const preferFastResponse = Boolean(body?.preferFastResponse);
     const message = `${body.message || ""}`.trim();
     const services = await getServices();
 
@@ -1983,6 +2064,39 @@ export async function POST(req: NextRequest) {
           currentService: learnerService,
         },
         quickReplies: quickRepliesForStage("ASK_USER_INTENT", learnerService),
+      });
+    }
+
+    if (
+      isPanMinorEligibilityQuestion(
+        normalizedMessage,
+        conversation.currentService,
+        conversation.currentCategory
+      )
+    ) {
+      const panService =
+        conversation.currentService && mapCategoryFromService(conversation.currentService) === "PAN"
+          ? conversation.currentService
+          : await resolveService(
+              message,
+              normalizedMessage,
+              services,
+              conversation.currentService,
+              conversation.currentCategory || category,
+              "ELIGIBILITY"
+            );
+
+      return NextResponse.json({
+        reply: buildPanMinorEligibilityReply(language, panService),
+        service: panService,
+        conversation: {
+          ...conversation,
+          stage: "ASK_USER_INTENT",
+          currentIntent: "ELIGIBILITY",
+          currentCategory: panService ? mapCategoryFromService(panService) : "PAN",
+          currentService: panService,
+        },
+        quickReplies: quickRepliesForStage("ASK_USER_INTENT", panService),
       });
     }
 
@@ -2219,12 +2333,14 @@ export async function POST(req: NextRequest) {
         .filter(Boolean)
         .join("\n");
 
-      const dynamicFaqContext = service.faqUrl
-        ? await fetchContentFromUrls(service.faqUrl, message)
-        : "";
-      const dynamicBodyContext = service.bodyUrl
-        ? await fetchContentFromUrls(service.bodyUrl, message)
-        : "";
+      const dynamicFaqContext =
+        !preferFastResponse && service.faqUrl
+          ? await fetchContentFromUrls(service.faqUrl, message)
+          : "";
+      const dynamicBodyContext =
+        !preferFastResponse && service.bodyUrl
+          ? await fetchContentFromUrls(service.bodyUrl, message)
+          : "";
       const enrichedServiceContext = [
         serviceContext,
         dynamicFaqContext,
@@ -2265,15 +2381,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (detectedIntent === "DOCUMENTS") {
-      const faq = service.faqUrl
-        ? await fetchContentFromUrls(service.faqUrl, message)
-        : "";
-      const bodyDocs = service.bodyUrl
-        ? await fetchContentFromUrls(
-            service.bodyUrl,
-            `${message} documents required proof eligibility`
-          )
-        : "";
+      const faq =
+        !preferFastResponse && service.faqUrl
+          ? await fetchContentFromUrls(service.faqUrl, message)
+          : "";
+      const bodyDocs =
+        !preferFastResponse && service.bodyUrl
+          ? await fetchContentFromUrls(
+              service.bodyUrl,
+              `${message} documents required proof eligibility`
+            )
+          : "";
       const docsSource = topLines(`${faq}\n${bodyDocs}`);
       const structuredDetails = service.documentsSummary?.length
         ? bulletList(service.documentsSummary)
@@ -2298,14 +2416,16 @@ export async function POST(req: NextRequest) {
                 : `\n\nRequired details:\n\n${bulletList(service.textFieldsSummary)}`
           : "";
 
-      const groundedDocsReply = await generateGroundedIntentResponse({
-        message,
-        service,
-        intent: "DOCUMENTS",
-        language,
-        structuredContent: `${details}${textFields}`,
-        sourceContent: docsSource,
-      });
+      const groundedDocsReply = preferFastResponse
+        ? ""
+        : await generateGroundedIntentResponse({
+            message,
+            service,
+            intent: "DOCUMENTS",
+            language,
+            structuredContent: `${details}${textFields}`,
+            sourceContent: docsSource,
+          });
 
       const docsReplyBody =
         groundedDocsReply || `${copy.docsLabel} for ${serviceName}:\n\n${details}${textFields}`;
@@ -2326,12 +2446,13 @@ export async function POST(req: NextRequest) {
       const rawProcess = topLines(
         service.processSteps?.length ? service.processSteps.join("\n") : service.process || ""
       );
-      const bodyProcess = service.bodyUrl
-        ? await fetchContentFromUrls(
-            service.bodyUrl,
-            `${message} process procedure steps apply`
-          )
-        : "";
+      const bodyProcess =
+        !preferFastResponse && service.bodyUrl
+          ? await fetchContentFromUrls(
+              service.bodyUrl,
+              `${message} process procedure steps apply`
+            )
+          : "";
       const processSource = looksLikeUsefulProcessText(rawProcess)
         ? rawProcess
         : looksLikeUsefulProcessText(topLines(bodyProcess))
@@ -2362,14 +2483,16 @@ export async function POST(req: NextRequest) {
                 : "You share the details, upload documents, and our team helps move the application forward."
           );
 
-      const groundedProcessReply = await generateGroundedIntentResponse({
-        message,
-        service,
-        intent: "PROCESS",
-        language,
-        structuredContent: process,
-        sourceContent: bodyProcess,
-      });
+      const groundedProcessReply = preferFastResponse
+        ? ""
+        : await generateGroundedIntentResponse({
+            message,
+            service,
+            intent: "PROCESS",
+            language,
+            structuredContent: process,
+            sourceContent: bodyProcess,
+          });
 
       const processReplyBody =
         groundedProcessReply || `${copy.processLabel} for ${serviceName}:\n\n${process}`;

@@ -1,0 +1,50 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum SessionStatus {
+  active
+  escalated
+  closed
+}
+
+enum SessionMode {
+  bot
+  human
+}
+
+enum Sender {
+  user
+  bot
+  admin
+}
+
+model ChatSession {
+  id        String        @id @default(cuid())
+  userId    String        @map("user_id")
+  userName  String?       @map("user_name")
+  userPhone String?       @map("user_phone")
+  status    SessionStatus @default(active)
+  mode      SessionMode   @default(bot)
+  createdAt DateTime      @default(now()) @map("created_at")
+  messages  Message[]
+
+  @@map("chat_sessions")
+}
+
+model Message {
+  id        String      @id @default(cuid())
+  sessionId String      @map("session_id")
+  sender    Sender
+  message   String      @db.Text
+  timestamp DateTime    @default(now())
+  session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, timestamp])
+  @@map("messages")
+}

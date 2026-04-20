@@ -14,6 +14,25 @@ const FEES_SHEET_URL =
   "https://docs.google.com/spreadsheets/d/1d82GmqYHJOC3pLIyO8H4SKYYkkZ2gdQq/export?format=csv&gid=385952581";
 
 let servicesCache: ServiceRecord[] = [];
+const SERVICES_CACHE_TTL_MS = 15 * 60 * 1000;
+
+type ServicesCacheState = {
+  data: ServiceRecord[];
+  loadedAt: number;
+  inflight: Promise<ServiceRecord[]> | null;
+};
+
+const globalServicesState = globalThis as typeof globalThis & {
+  __jaagrutServicesCacheState?: ServicesCacheState;
+};
+
+if (!globalServicesState.__jaagrutServicesCacheState) {
+  globalServicesState.__jaagrutServicesCacheState = {
+    data: [],
+    loadedAt: 0,
+    inflight: null,
+  };
+}
 
 type DocumentsSheetRow = {
   serviceName: string;
@@ -655,8 +674,28 @@ function buildServiceRecord(
 }
 
 export async function getServices() {
+  const cacheState = globalServicesState.__jaagrutServicesCacheState!;
+  const now = Date.now();
+
+  if (
+    cacheState.data.length > 0 &&
+    now - cacheState.loadedAt < SERVICES_CACHE_TTL_MS
+  ) {
+    servicesCache = cacheState.data;
+    return cacheState.data;
+  }
+
+  if (cacheState.inflight) {
+    return cacheState.inflight;
+  }
+
+  cacheState.inflight = (async () => {
   try {
-    if (servicesCache.length > 0) return servicesCache;
+    if (servicesCache.length > 0) {
+      cacheState.data = servicesCache;
+      cacheState.loadedAt = Date.now();
+      return servicesCache;
+    }
 
     const [servicesRes, documentsRes, serviceNamesRes, urlSheetRes, feesRes] = await Promise.all([
       fetch(SHEET_URL, { cache: "no-store" }),
@@ -720,11 +759,18 @@ export async function getServices() {
       })
       .filter((service) => service.title);
 
+    cacheState.data = servicesCache;
+    cacheState.loadedAt = Date.now();
     return servicesCache;
   } catch (err) {
     console.error("Sheet error:", err);
-    return [];
+    return cacheState.data.length ? cacheState.data : [];
+  } finally {
+    cacheState.inflight = null;
   }
+  })();
+
+  return cacheState.inflight;
 }
 
 export async function getRedirectUrl(userQuery: string) {
